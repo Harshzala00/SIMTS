@@ -1,0 +1,20 @@
+{% extends "admin/base.html" %}
+{% block title %}Certificates — SIMTS Admin{% endblock %}
+{% block content %}
+<div class="page-heading"><div><span class="top-label">DOCUMENTS</span><h1>Certificates</h1><p>Upload and manage student certificate images. Supported formats: PNG and JPG/JPEG.</p></div></div>
+<div class="panel form-panel"><div class="panel-head"><h2>Add Certificate</h2></div>
+<form method="post" enctype="multipart/form-data" class="admin-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<div class="form-grid">
+<div><label>Student Code *</label><input name="student_id" required placeholder="SIMTS10001"></div>
+<div><label>Certificate Number *</label><input name="certificate_number" required placeholder="CERT-2026-001"></div>
+<div><label>Issue Date</label><input type="date" name="issue_date"></div>
+<div><label>Certificate Image *</label><input type="file" name="certificate_file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" required><small class="field-help">PNG or JPG/JPEG only. The public website will display the image; it will not provide a download button.</small></div>
+</div>
+<button type="submit" class="btn primary">Upload Certificate Image</button>
+</form></div>
+<div class="panel table-panel" style="margin-top:25px"><div class="panel-head"><h2>Certificates</h2></div><div class="table-scroll"><table><thead><tr><th>Certificate Number</th><th>Student</th><th>Issue Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+{% for c in certificates %}<tr><td><strong>{{ c.certificate_number }}</strong></td><td>{{ c.student.full_name if c.student else 'Record #' ~ c.student_id }} (<code>{{ c.student.student_id if c.student else c.student_id }}</code>)</td><td>{{ c.issue_date }}</td><td><span class="badge {{ c.status }}">{{ c.status }}</span></td><td class="action-cell"><div class="btn-group"><a class="btn btn-sm btn-secondary" href="{{ url_for('public.view_certificate', certificate_id=c.id) }}" target="_blank" rel="noopener">View Image</a><a class="btn btn-sm btn-secondary" href="{{ url_for('admin.edit_certificate', certificate_id=c.id) }}">Edit</a><form method="post" action="{{ url_for('admin.delete_certificate', certificate_id=c.id) }}" class="inline-form" onsubmit="return confirm('Delete certificate {{ c.certificate_number }}?');"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-sm btn-danger">Delete</button></form></div></td></tr>
+{% else %}<tr><td colspan="5" class="empty">No certificates added yet.</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% endblock %}

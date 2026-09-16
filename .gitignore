@@ -1,0 +1,31 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Flask
+instance/
+
+# User-generated/private data
+uploads/*
+!uploads/.gitkeep
+
+backups/*
+!backups/.gitkeep
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

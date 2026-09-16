@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Courses & Programs | Sai Institute of Management & Technology Studies{% endblock %}
+{% block content %}
+<section class="page-hero compact"><div class="container narrow"><span class="eyebrow">ACADEMIC PROGRAMMES</span><h1>Courses &amp; Programs</h1><p>Choose an academic area to explore the programmes available in that category.</p></div></section>
+<section class="course-selector"><div class="container selector-inner">
+  <a class="selector-card {% if selected_category == 'management' %}selected{% endif %}" href="{{ url_for('public.courses', category='management') }}"><span>01</span><div><small>ACADEMIC AREA</small><h2>Management</h2><p>Business, management and professional development programmes.</p></div><b>View Courses →</b></a>
+  <a class="selector-card {% if selected_category == 'engineering' %}selected{% endif %}" href="{{ url_for('public.courses', category='engineering') }}"><span>02</span><div><small>ACADEMIC AREA</small><h2>Engineering</h2><p>Engineering, technology and technical skills programmes.</p></div><b>View Courses →</b></a>
+</div></section>
+{% if selected_category %}
+<section class="section course-results"><div class="container">
+  <div class="section-heading split"><div><span class="section-kicker">{{ 'MANAGEMENT' if selected_category == 'management' else 'ENGINEERING' }}</span><h2>{{ selected_category|title }} Courses</h2><p>Programmes available in this academic area.</p></div><a class="text-link" href="{{ url_for('public.courses') }}">← All areas</a></div>
+  <div class="course-grid">
+  {% for c in courses %}
+    <article class="course-card">
+      <div class="course-top"><span class="course-code">{{ c.course_code }}</span><span class="course-tag">{{ c.category|title }}</span></div>
+      <h3>{{ c.course_name }}</h3>
+      <div class="course-facts"><div><small>Duration</small><strong>{{ c.duration or '—' }}</strong></div><div><small>Eligibility</small><strong>{{ c.eligibility or 'Contact institute' }}</strong></div></div>
+      <div class="course-description">{{ c.description or 'Programme information is available from the institute.' }}</div>
+      <div class="course-bottom"><span>{% if c.fees is not none %}₹{{ '%.2f'|format(c.fees|float) }} / Year{% else %}Fees on request{% endif %}</span><a href="{{ url_for('public.contact') }}">Enquire →</a></div>
+    </article>
+  {% else %}<div class="empty-card"><h3>No {{ selected_category|title }} courses available</h3><p>Course information will appear here once added by the institute.</p></div>{% endfor %}
+  </div>
+</div></section>
+{% else %}
+<section class="section selector-message"><div class="container"><div class="section-heading centered"><span class="section-kicker">SELECT AN AREA</span><h2>Explore courses by academic category</h2><p>Click Management or Engineering above to open only the courses related to that area.</p></div></div></section>
+{% endif %}
+{% endblock %}
