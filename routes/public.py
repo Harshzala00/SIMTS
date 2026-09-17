@@ -110,20 +110,39 @@ def admission_verification():
 @public_bp.route("/certificate/<int:certificate_id>/view")
 @limiter.limit("60 per minute")
 def view_certificate(certificate_id):
-    """Serve a valid certificate image inline without exposing its private Blob URL."""
+    """Serve a valid private certificate image inline."""
     certificate = db.session.get(Certificate, certificate_id)
 
     if not certificate or certificate.status != "valid":
         abort(404)
 
-    mimetype = _image_mimetype(certificate.file_name)
+    reference = str(certificate.file_name or "").strip()
+    mimetype = _image_mimetype(reference)
+
     if mimetype not in {"image/png", "image/jpeg"}:
+        current_app.logger.warning(
+            "Certificate %s has unsupported file reference: %r",
+            certificate_id,
+            reference,
+        )
         abort(404)
 
-    if blob_enabled():
+    if reference.startswith(("http://", "https://")):
+        if not blob_enabled():
+            current_app.logger.error(
+                "Certificate %s is a remote Blob URL but BLOB_READ_WRITE_TOKEN is missing.",
+                certificate_id,
+            )
+            abort(404)
+
         try:
-            temp_path = download_to_temp(certificate.file_name)
-        except BlobStorageError:
+            temp_path = download_to_temp(reference)
+        except BlobStorageError as exc:
+            current_app.logger.error(
+                "Certificate %s could not be read from private Blob: %s",
+                certificate_id,
+                exc,
+            )
             abort(404)
 
         response = send_file(
@@ -131,16 +150,19 @@ def view_certificate(certificate_id):
             mimetype=mimetype,
             as_attachment=False,
             download_name=None,
+            max_age=0,
         )
         response.call_on_close(
             lambda path=temp_path: path.unlink(missing_ok=True)
         )
     else:
+        # Local development fallback.
         response = send_from_directory(
             current_app.config["UPLOAD_FOLDER"],
-            certificate.file_name,
+            reference,
             as_attachment=False,
             mimetype=mimetype,
+            max_age=0,
         )
 
     response.headers["Cache-Control"] = "private, no-store, max-age=0"
@@ -154,6 +176,9 @@ def view_certificate(certificate_id):
 
 def _image_mimetype(filename):
     name = str(filename or "").lower()
+
+    # Blob URLs do not normally contain a query string, but handle it safely.
+    name = name.split("?", 1)[0].split("#", 1)[0]
 
     if name.endswith(".png"):
         return "image/png"
