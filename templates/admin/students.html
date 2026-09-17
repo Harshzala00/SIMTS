@@ -1,0 +1,64 @@
+{% extends "admin/base.html" %}
+{% block title %}Students — SIMTS Admin{% endblock %}
+{% block content %}
+<div class="page-heading">
+    <div>
+        <span class="top-label">RECORDS</span>
+        <h1>Students</h1>
+        <p>Search and manage registered student records.</p>
+    </div>
+    <div>
+        <a class="btn secondary" href="{{ url_for('admin.import_students') }}">Import Excel</a>
+        <a class="btn primary" href="{{ url_for('admin.add_student') }}">＋ Add Student</a>
+    </div>
+</div>
+
+<form class="searchbar" method="get">
+    <input name="q" value="{{ q }}" placeholder="Search Student ID, name or email">
+    <button class="btn primary" type="submit">Search</button>
+    {% if q %}
+    <a class="btn secondary" href="{{ url_for('admin.students') }}">Clear</a>
+    {% endif %}
+</form>
+
+<div class="panel table-panel">
+    <div class="table-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Student Code</th>
+                    <th>Email</th>
+                    <th>Course</th>
+                    <th>Passing</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in students %}
+                <tr>
+                    <td><strong>{{ s.full_name }}</strong></td>
+                    <td><code>{{ s.student_id }}</code></td>
+                    <td>{{ s.email }}</td>
+                    <td>{{ s.course.course_name if s.course else '—' }}</td>
+                    <td>{{ s.passing_year or '—' }}{% if s.passing_grade %} · {{ s.passing_grade }}{% endif %}</td>
+                    <td class="action-cell">
+                        <div class="btn-group">
+                            <a class="btn btn-sm btn-secondary" href="{{ url_for('admin.edit_student', student_id=s.id) }}">Edit</a>
+                            <form method="post" action="{{ url_for('admin.delete_student', student_id=s.id) }}" class="inline-form" onsubmit="return confirm('Are you sure you want to permanently delete student {{ s.full_name }} ({{ s.student_id }})? This will also remove any linked certificate image.');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="empty">No matching students.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

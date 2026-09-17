@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Sai Institute of Management & Technology Studies | Home{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="hero-bg-shape"></div>
+  <div class="container hero-inner">
+    <div class="hero-copy">
+      <span class="eyebrow light">WELCOME TO Sai Institute of Management and Technology Studies</span>
+      <h1>Be ready to discover a <span>new dimension of growing education.</span></h1>
+      <p>Sai Institute of Management &amp; Technology Studies is an independent school of higher education specializing in programmes of study leading to qualifications in business management and cognate areas, as well as awards of professional bodies.</p>
+      <div class="hero-actions">
+        <a class="btn gold" href="{{ url_for('public.courses') }}">Explore Programmes <span>→</span></a>
+        <a class="btn outline-light" href="{{ url_for('public.admission_verification') }}">Verify Admission</a>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="hero-logo-card"><img src="{{ url_for('static', filename='images/simts-logo.png') }}" alt="SIMTS"></div>
+      <div class="hero-stat"><strong>Career</strong><span>Oriented Education</span></div>
+      <div class="hero-stat"><strong>Knowledge</strong><span>Skills &amp; Development</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="intro-band">
+  <div class="container intro-grid">
+    <div><span class="section-kicker">ABOUT SIMTS</span><h2>Education designed around knowledge, confidence and professional growth.</h2></div>
+    <div><p>Over the past 10 years Sai Institute of Management & Technical Studies has been recognized as an institution that meets the needs of students, employers and the wider academic community, and has a deserved reputation as being one of the leading independent business schools in India.</p></div>
+    <div><p>Our educational philosophy connects academic learning with practical application and the expectations of modern professional environments. We aim to help students develop the knowledge, skills and confidence needed for their future.</p><a class="arrow-link" href="{{ url_for('public.about') }}">Discover our institute →</a></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="section-heading centered"><span class="section-kicker">OUR APPROACH</span><h2>A foundation for the modern workplace</h2><p>Learning is strengthened when academic understanding is connected with practical application and professional values.</p></div>
+    <div class="feature-grid">
+      <article class="feature-card"><div class="feature-icon">01</div><h3>Academic Learning</h3><p>Structured programmes help students build knowledge and understanding in their chosen area of study.</p></article>
+      <article class="feature-card"><div class="feature-icon">02</div><h3>Practical Application</h3><p>Academic learning is supplemented with practical application and workplace-oriented understanding.</p></article>
+      <article class="feature-card"><div class="feature-icon">03</div><h3>Professional Skills</h3><p>Students are encouraged to develop confidence, skills and ability relevant to professional expectations.</p></article>
+      <article class="feature-card"><div class="feature-icon">04</div><h3>Professional Values</h3><p>Professional and ethical behaviour remains an important part of learning and future work.</p></article>
+      <div><p>SIMTS attracts students from all parts of the India and across the globe. The Part-time, the evening and executive weekend study options are the preferred choice of home-based students. We believe that the culturally diverse population of students and faculty at SIMTS adds to our students’ learning experience and helps us to remain in tune with the needs of business and society throughout the world.
+
+              We strongly believe in supporting our students at every stage of their education. From pre-application counseling to right the way through to career guidance. Even before you decide to make an application we welcome the opportunity of meeting with you and discussing your academic career aspirations – every day is an open day at SIMTS!
+
+           </p></div>
+    </div>
+  </div>
+</section>
+
+<section class="programme-section">
+  <div class="container">
+    <div class="section-heading split"><div><span class="section-kicker">ACADEMIC PROGRAMMES</span><h2>Choose your area of study</h2></div><a class="btn navy-outline" href="{{ url_for('public.courses') }}">View all programmes</a></div>
+    <div class="programme-grid">
+      <a class="programme-card management" href="{{ url_for('public.courses', category='management') }}"><div><span>01</span><h3>Management</h3><p>Explore programmes focused on management, business and professional development.</p></div><b>Explore →</b></a>
+      <a class="programme-card engineering" href="{{ url_for('public.courses', category='engineering') }}"><div><span>02</span><h3>Engineering</h3><p>Explore programmes focused on engineering, technology and technical skills.</p></div><b>Explore →</b></a>
+    </div>
+  </div>
+</section>
+
+<section class="cta-section"><div class="container cta-inner"><div><span class="section-kicker light">STUDENT SUPPORT</span><h2>Have a question about a programme or admission record?</h2><p>Use our contact and admission verification services for academic information and record enquiries.</p></div><div class="cta-actions"><a class="btn gold" href="{{ url_for('public.contact') }}">Contact Us</a><a class="btn outline-light" href="{{ url_for('public.admission_verification') }}">Admission Verification</a></div></div></section>
+{% endblock %}
