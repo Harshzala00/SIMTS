@@ -10,11 +10,6 @@
     <a class="btn secondary" href="{{ url_for('admin.courses') }}">← Back to Courses</a>
 </div>
 
-<style>
-#engineering-section-field { display: none; }
-.form-grid:has(#course_category option[value="engineering"]:checked) #engineering-section-field { display: block !important; }
-</style>
-
 <div class="panel form-panel">
     <form method="post" class="admin-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -29,15 +24,16 @@
             </div>
             <div>
                 <label>Course Category *</label>
-                <select name="category" id="course_category" required onchange="syncCategory()" oninput="syncCategory()">
+                <select name="category" id="course_category" required>
                     <option value="management" {% if (course and course.category == 'management') or (not course and preset_category == 'management') %}selected{% endif %}>Management</option>
                     <option value="engineering" {% if (course and course.category == 'engineering') or (not course and preset_category == 'engineering') %}selected{% endif %}>Engineering</option>
                 </select>
+                <small class="field-help">Select Management or Engineering.</small>
             </div>
-            <div id="engineering-section-field" style="display: {% if (course and course.category == 'engineering') or (not course and preset_category == 'engineering') %}block{% else %}none{% endif %} !important;">
-                <label>Engineering Section *</label>
-                <select name="engineering_section" id="engineering_section" {% if (course and course.category == 'engineering') or (not course and preset_category == 'engineering') %}required{% endif %}>
-                    <option value="">Select Engineering Section</option>
+            <div id="engineering-section-field">
+                <label>Engineering Section <span class="optional">(Required for Engineering)</span></label>
+                <select name="engineering_section" id="engineering_section">
+                    <option value="">None / Not Applicable (Management)</option>
                     <option value="civil" {% if (course and course.engineering_section == 'civil') or (not course and preset_engineering_section == 'civil') %}selected{% endif %}>Civil Engineering</option>
                     <option value="mechanical" {% if (course and course.engineering_section == 'mechanical') or (not course and preset_engineering_section == 'mechanical') %}selected{% endif %}>Mechanical Engineering</option>
                     <option value="chemical" {% if (course and course.engineering_section == 'chemical') or (not course and preset_engineering_section == 'chemical') %}selected{% endif %}>Chemical Engineering</option>
@@ -46,7 +42,7 @@
                     <option value="automobile" {% if (course and course.engineering_section == 'automobile') or (not course and preset_engineering_section == 'automobile') %}selected{% endif %}>Automobile Engineering</option>
                     <option value="computer" {% if (course and course.engineering_section == 'computer') or (not course and preset_engineering_section == 'computer') %}selected{% endif %}>Computer Engineering</option>
                 </select>
-                <small class="field-help">Select the engineering discipline for this course.</small>
+                <small class="field-help">Choose 1 of the 7 disciplines when adding an Engineering course.</small>
             </div>
             <div>
                 <label>Duration</label>
@@ -87,26 +83,4 @@ Credits: 120">{{ course.description if course else '' }}</textarea>
         </div>
     </form>
 </div>
-<script>
-function syncCategory(){
-  var cat = document.getElementById('course_category') || document.querySelector('select[name="category"]');
-  var fld = document.getElementById('engineering-section-field');
-  var sel = document.getElementById('engineering_section');
-  if(!cat || !fld) return;
-  var val = (cat.value || '').trim().toLowerCase();
-  var isEng = (val === 'engineering');
-  fld.style.setProperty('display', isEng ? 'block' : 'none', 'important');
-  if(sel){
-    sel.required = isEng;
-    if(!isEng){
-      sel.value = '';
-    }
-  }
-}
-syncCategory();
-if(document.readyState === 'loading'){
-  document.addEventListener('DOMContentLoaded', syncCategory);
-}
-window.addEventListener('load', syncCategory);
-</script>
 {% endblock %}
