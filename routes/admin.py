@@ -317,6 +317,9 @@ def courses():
 @admin_bp.route('/courses/add', methods=['GET', 'POST'])
 @protect
 def add_course():
+    preset_section = clean(request.args.get('engineering_section'), 40).lower()
+    if preset_section not in ENGINEERING_SECTION_KEYS:
+        preset_section = ''
     if request.method == 'POST':
         code, name = clean(request.form.get('course_code'), 50), clean(request.form.get('course_name'), 200)
         category = clean(request.form.get('category'), 30).lower()
@@ -342,7 +345,7 @@ def add_course():
         db.session.add(course); db.session.commit()
         audit('CREATE_COURSE', code); flash('Course added.', 'success')
         return redirect(url_for('admin.courses'))
-    return render_template('admin/course_form.html', course=None)
+    return render_template('admin/course_form.html', course=None, preset_category=('engineering' if preset_section else 'management'), preset_engineering_section=preset_section)
 
 @admin_bp.route('/courses/<int:course_id>/edit', methods=['GET', 'POST'])
 @protect

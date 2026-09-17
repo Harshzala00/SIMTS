@@ -18,10 +18,13 @@
 </section>
 
 <section class="admin-course-category">
-  <div class="panel-head"><h2>Engineering Courses</h2><span style="font-size:12px;color:var(--muted)">7 sections</span></div>
+  <div class="panel-head"><div><h2>Engineering Courses</h2><span style="font-size:12px;color:var(--muted)">Add courses directly to one of the 7 engineering sections.</span></div><span style="font-size:12px;color:var(--muted)">7 sections</span></div>
   {% for section_key, section_title in engineering_sections %}
   <div style="margin-bottom:24px">
-    <h3 style="margin:0 0 10px">{{ section_title }}</h3>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+      <h3 style="margin:0">{{ section_title }}</h3>
+      <a class="btn btn-sm btn-primary" href="{{ url_for('admin.add_course', engineering_section=section_key) }}">＋ Add {{ section_title }} Course</a>
+    </div>
     <div class="course-admin-grid">
     {% for c in courses if c.category == 'engineering' and c.engineering_section == section_key %}
       <div class="panel course-admin">

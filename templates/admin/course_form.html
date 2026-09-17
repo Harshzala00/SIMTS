@@ -25,21 +25,21 @@
             <div>
                 <label>Course Category *</label>
                 <select name="category" required>
-                    <option value="management" {% if not course or course.category == 'management' %}selected{% endif %}>Management</option>
-                    <option value="engineering" {% if course and course.category == 'engineering' %}selected{% endif %}>Engineering</option>
+                    <option value="management" {% if (course and course.category == 'management') or (not course and preset_category == 'management') %}selected{% endif %}>Management</option>
+                    <option value="engineering" {% if (course and course.category == 'engineering') or (not course and preset_category == 'engineering') %}selected{% endif %}>Engineering</option>
                 </select>
             </div>
             <div id="engineering-section-field">
                 <label>Engineering Section *</label>
                 <select name="engineering_section" id="engineering_section">
                     <option value="">Select Engineering Section</option>
-                    <option value="civil" {% if course and course.engineering_section == 'civil' %}selected{% endif %}>Civil Engineering</option>
-                    <option value="mechanical" {% if course and course.engineering_section == 'mechanical' %}selected{% endif %}>Mechanical Engineering</option>
-                    <option value="chemical" {% if course and course.engineering_section == 'chemical' %}selected{% endif %}>Chemical Engineering</option>
-                    <option value="electrical" {% if course and course.engineering_section == 'electrical' %}selected{% endif %}>Electrical Engineering</option>
-                    <option value="electronics" {% if course and course.engineering_section == 'electronics' %}selected{% endif %}>Electronics Engineering</option>
-                    <option value="automobile" {% if course and course.engineering_section == 'automobile' %}selected{% endif %}>Automobile Engineering</option>
-                    <option value="computer" {% if course and course.engineering_section == 'computer' %}selected{% endif %}>Computer Engineering</option>
+                    <option value="civil" {% if (course and course.engineering_section == 'civil') or (not course and preset_engineering_section == 'civil') %}selected{% endif %}>Civil Engineering</option>
+                    <option value="mechanical" {% if (course and course.engineering_section == 'mechanical') or (not course and preset_engineering_section == 'mechanical') %}selected{% endif %}>Mechanical Engineering</option>
+                    <option value="chemical" {% if (course and course.engineering_section == 'chemical') or (not course and preset_engineering_section == 'chemical') %}selected{% endif %}>Chemical Engineering</option>
+                    <option value="electrical" {% if (course and course.engineering_section == 'electrical') or (not course and preset_engineering_section == 'electrical') %}selected{% endif %}>Electrical Engineering</option>
+                    <option value="electronics" {% if (course and course.engineering_section == 'electronics') or (not course and preset_engineering_section == 'electronics') %}selected{% endif %}>Electronics Engineering</option>
+                    <option value="automobile" {% if (course and course.engineering_section == 'automobile') or (not course and preset_engineering_section == 'automobile') %}selected{% endif %}>Automobile Engineering</option>
+                    <option value="computer" {% if (course and course.engineering_section == 'computer') or (not course and preset_engineering_section == 'computer') %}selected{% endif %}>Computer Engineering</option>
                 </select>
                 <small class="field-help">Select the engineering discipline for this course.</small>
             </div>
