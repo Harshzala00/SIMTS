@@ -55,21 +55,40 @@ def home():
     return render_template("index.html", courses=courses)
 
 
+ENGINEERING_SECTIONS = [
+    ('civil', 'Civil Engineering'),
+    ('mechanical', 'Mechanical Engineering'),
+    ('chemical', 'Chemical Engineering'),
+    ('electrical', 'Electrical Engineering'),
+    ('electronics', 'Electronics Engineering'),
+    ('automobile', 'Automobile Engineering'),
+    ('computer', 'Computer Engineering'),
+]
+ENGINEERING_SECTION_KEYS = {key for key, _ in ENGINEERING_SECTIONS}
+
+
 @public_bp.route("/courses")
 def courses():
     selected_category = (request.args.get("category") or "").strip().lower()
+    selected_section = (request.args.get("section") or "").strip().lower()
     if selected_category not in {"management", "engineering"}:
         selected_category = None
+    if selected_category != "engineering" or selected_section not in ENGINEERING_SECTION_KEYS:
+        selected_section = None
 
     query = Course.query.filter_by(status="active")
     if selected_category:
         query = query.filter_by(category=selected_category)
+    if selected_section:
+        query = query.filter_by(engineering_section=selected_section)
 
     courses = query.order_by(Course.course_name).all()
     return render_template(
         "courses.html",
         courses=courses,
         selected_category=selected_category,
+        selected_section=selected_section,
+        engineering_sections=ENGINEERING_SECTIONS,
     )
 
 
@@ -110,39 +129,20 @@ def admission_verification():
 @public_bp.route("/certificate/<int:certificate_id>/view")
 @limiter.limit("60 per minute")
 def view_certificate(certificate_id):
-    """Serve a valid private certificate image inline."""
+    """Serve a valid certificate image inline without exposing its private Blob URL."""
     certificate = db.session.get(Certificate, certificate_id)
 
     if not certificate or certificate.status != "valid":
         abort(404)
 
-    reference = str(certificate.file_name or "").strip()
-    mimetype = _image_mimetype(reference)
-
+    mimetype = _image_mimetype(certificate.file_name)
     if mimetype not in {"image/png", "image/jpeg"}:
-        current_app.logger.warning(
-            "Certificate %s has unsupported file reference: %r",
-            certificate_id,
-            reference,
-        )
         abort(404)
 
-    if reference.startswith(("http://", "https://")):
-        if not blob_enabled():
-            current_app.logger.error(
-                "Certificate %s is a remote Blob URL but BLOB_READ_WRITE_TOKEN is missing.",
-                certificate_id,
-            )
-            abort(404)
-
+    if blob_enabled():
         try:
-            temp_path = download_to_temp(reference)
-        except BlobStorageError as exc:
-            current_app.logger.error(
-                "Certificate %s could not be read from private Blob: %s",
-                certificate_id,
-                exc,
-            )
+            temp_path = download_to_temp(certificate.file_name)
+        except BlobStorageError:
             abort(404)
 
         response = send_file(
@@ -150,19 +150,16 @@ def view_certificate(certificate_id):
             mimetype=mimetype,
             as_attachment=False,
             download_name=None,
-            max_age=0,
         )
         response.call_on_close(
             lambda path=temp_path: path.unlink(missing_ok=True)
         )
     else:
-        # Local development fallback.
         response = send_from_directory(
             current_app.config["UPLOAD_FOLDER"],
-            reference,
+            certificate.file_name,
             as_attachment=False,
             mimetype=mimetype,
-            max_age=0,
         )
 
     response.headers["Cache-Control"] = "private, no-store, max-age=0"
@@ -176,9 +173,6 @@ def view_certificate(certificate_id):
 
 def _image_mimetype(filename):
     name = str(filename or "").lower()
-
-    # Blob URLs do not normally contain a query string, but handle it safely.
-    name = name.split("?", 1)[0].split("#", 1)[0]
 
     if name.endswith(".png"):
         return "image/png"

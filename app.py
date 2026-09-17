@@ -48,6 +48,9 @@ def sync_database_schema(app):
                             IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='course' AND column_name='fees') THEN
                                 ALTER TABLE course ADD COLUMN fees NUMERIC(10,2);
                             END IF;
+                            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='course' AND column_name='engineering_section') THEN
+                                ALTER TABLE course ADD COLUMN engineering_section VARCHAR(40);
+                            END IF;
                         END $$;
                     """))
                     conn.execute(db.text("UPDATE course SET category='management' WHERE category IS NULL OR category=''"))
@@ -70,6 +73,8 @@ def sync_database_schema(app):
                         conn.execute(db.text("ALTER TABLE course ADD COLUMN category VARCHAR(30) DEFAULT 'management'"))
                     if 'fees' not in course_cols:
                         conn.execute(db.text("ALTER TABLE course ADD COLUMN fees NUMERIC(10,2)"))
+                    if 'engineering_section' not in course_cols:
+                        conn.execute(db.text("ALTER TABLE course ADD COLUMN engineering_section VARCHAR(40)"))
                     conn.execute(db.text("UPDATE course SET category='management' WHERE category IS NULL OR category=''"))
                     conn.commit()
         except Exception as e:

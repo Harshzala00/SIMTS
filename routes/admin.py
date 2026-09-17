@@ -290,6 +290,18 @@ def import_students():
         return redirect(url_for('admin.students'))
     return render_template('admin/import_students.html')
 
+# Engineering sections used by the public catalogue and admin course form.
+ENGINEERING_SECTIONS = [
+    ('civil', 'Civil Engineering'),
+    ('mechanical', 'Mechanical Engineering'),
+    ('chemical', 'Chemical Engineering'),
+    ('electrical', 'Electrical Engineering'),
+    ('electronics', 'Electronics Engineering'),
+    ('automobile', 'Automobile Engineering'),
+    ('computer', 'Computer Engineering'),
+]
+ENGINEERING_SECTION_KEYS = {key for key, _ in ENGINEERING_SECTIONS}
+
 # ============================================================
 # COURSES MANAGEMENT
 # ============================================================
@@ -297,10 +309,10 @@ def import_students():
 @admin_bp.route('/courses')
 @protect
 def courses():
-    courses = Course.query.order_by(Course.category, Course.course_name).all()
+    courses = Course.query.order_by(Course.category, Course.engineering_section, Course.course_name).all()
     counts = dict(db.session.query(Student.course_id, func.count(Student.id))
                   .filter(Student.course_id.isnot(None)).group_by(Student.course_id).all())
-    return render_template('admin/courses.html', courses=courses, student_counts=counts)
+    return render_template('admin/courses.html', courses=courses, student_counts=counts, engineering_sections=ENGINEERING_SECTIONS)
 
 @admin_bp.route('/courses/add', methods=['GET', 'POST'])
 @protect
@@ -309,13 +321,19 @@ def add_course():
         code, name = clean(request.form.get('course_code'), 50), clean(request.form.get('course_name'), 200)
         category = clean(request.form.get('category'), 30).lower()
         if category not in {'management', 'engineering'}: category = 'management'
+        engineering_section = clean(request.form.get('engineering_section'), 40).lower() or None
+        if category == 'engineering' and engineering_section not in ENGINEERING_SECTION_KEYS:
+            flash('Please select an Engineering section.', 'error')
+            return redirect(url_for('admin.add_course'))
+        if category == 'management':
+            engineering_section = None
         if not code or not name:
             flash('Course code and name are required.', 'error')
             return redirect(url_for('admin.add_course'))
         if Course.query.filter_by(course_code=code).first():
             flash('Course code already exists.', 'error')
             return redirect(url_for('admin.add_course'))
-        course = Course(course_code=code, course_name=name, category=category,
+        course = Course(course_code=code, course_name=name, category=category, engineering_section=engineering_section,
                         duration=clean(request.form.get('duration'), 100),
                         eligibility=clean(request.form.get('eligibility'), 500),
                         fees=parse_course_fee(request.form.get('fees')),
@@ -336,12 +354,18 @@ def edit_course(course_id):
         code, name = clean(request.form.get('course_code'), 50), clean(request.form.get('course_name'), 200)
         category = clean(request.form.get('category'), 30).lower()
         if category not in {'management', 'engineering'}: category = 'management'
+        engineering_section = clean(request.form.get('engineering_section'), 40).lower() or None
+        if category == 'engineering' and engineering_section not in ENGINEERING_SECTION_KEYS:
+            flash('Please select an Engineering section.', 'error')
+            return redirect(url_for('admin.edit_course', course_id=course.id))
+        if category == 'management':
+            engineering_section = None
         if not code or not name:
             flash('Course code and name are required.', 'error'); return redirect(url_for('admin.edit_course', course_id=course.id))
         existing = Course.query.filter_by(course_code=code).first()
         if existing and existing.id != course.id:
             flash('Course code already in use by another course.', 'error'); return redirect(url_for('admin.edit_course', course_id=course.id))
-        course.course_code, course.course_name, course.category = code, name, category
+        course.course_code, course.course_name, course.category, course.engineering_section = code, name, category, engineering_section
         course.duration = clean(request.form.get('duration'), 100)
         course.eligibility = clean(request.form.get('eligibility'), 500)
         course.fees = parse_course_fee(request.form.get('fees'))

@@ -1,12 +1,11 @@
 {% extends "admin/base.html" %}
 {% block title %}Courses — SIMTS Admin{% endblock %}
 {% block content %}
-<div class="page-heading"><div><span class="top-label">ACADEMICS</span><h1>Courses</h1><p>Manage programs and assign each course to Management or Engineering.</p></div><a class="btn primary" href="{{ url_for('admin.add_course') }}">＋ Add Course</a></div>
-{% for category, title in [('management','Management Courses'),('engineering','Engineering Courses')] %}
+<div class="page-heading"><div><span class="top-label">ACADEMICS</span><h1>Courses</h1><p>Manage programs, assign Management or Engineering, and organize Engineering courses by discipline.</p></div><a class="btn primary" href="{{ url_for('admin.add_course') }}">＋ Add Course</a></div>
 <section class="admin-course-category">
-  <div class="panel-head"><h2>{{ title }}</h2></div>
+  <div class="panel-head"><h2>Management Courses</h2></div>
   <div class="course-admin-grid">
-  {% for c in courses if c.category == category %}
+  {% for c in courses if c.category == 'management' %}
     <div class="panel course-admin">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="course-code">{{ c.course_code }}</span><span class="badge {{ c.status }}">{{ c.status }}</span></div>
       <h2>{{ c.course_name }}</h2>
@@ -14,8 +13,29 @@
       <div style="margin:12px 0"><small style="color:var(--muted);display:block">Duration &amp; Eligibility</small><strong>{{ c.duration or '—' }}</strong>{% if c.eligibility %}<div style="font-size:12px;color:var(--muted);margin-top:4px">{{ c.eligibility }}</div>{% endif %}<div style="font-size:13px;margin-top:8px"><strong>Fees:</strong> {% if c.fees is not none %}₹{{ '%.2f'|format(c.fees|float) }} / Year{% else %}Fees on request{% endif %}</div></div>
       <div class="card-actions" style="margin-top:15px;padding-top:12px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:var(--muted)">{{ student_counts.get(c.id,0) }} students</span><div class="btn-group"><a class="btn btn-sm btn-secondary" href="{{ url_for('admin.edit_course',course_id=c.id) }}">Edit</a><form method="post" action="{{ url_for('admin.delete_course',course_id=c.id) }}" class="inline-form" onsubmit="return confirm('Delete course {{ c.course_name }}?');"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-sm btn-danger">Delete</button></form></div></div>
     </div>
-  {% else %}<div class="panel empty">No {{ title|lower }} added yet.</div>{% endfor %}
+  {% else %}<div class="panel empty">No Management courses added yet.</div>{% endfor %}
   </div>
 </section>
-{% endfor %}
+
+<section class="admin-course-category">
+  <div class="panel-head"><h2>Engineering Courses</h2><span style="font-size:12px;color:var(--muted)">7 sections</span></div>
+  {% for section_key, section_title in engineering_sections %}
+  <div style="margin-bottom:24px">
+    <h3 style="margin:0 0 10px">{{ section_title }}</h3>
+    <div class="course-admin-grid">
+    {% for c in courses if c.category == 'engineering' and c.engineering_section == section_key %}
+      <div class="panel course-admin">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="course-code">{{ c.course_code }}</span><span class="badge {{ c.status }}">{{ c.status }}</span></div>
+        <h2>{{ c.course_name }}</h2>
+        <div class="course-description">{{ c.description or 'No description added.' }}</div>
+        <div style="margin:12px 0"><small style="color:var(--muted);display:block">Duration &amp; Eligibility</small><strong>{{ c.duration or '—' }}</strong>{% if c.eligibility %}<div style="font-size:12px;color:var(--muted);margin-top:4px">{{ c.eligibility }}</div>{% endif %}<div style="font-size:13px;margin-top:8px"><strong>Fees:</strong> {% if c.fees is not none %}₹{{ '%.2f'|format(c.fees|float) }} / Year{% else %}Fees on request{% endif %}</div></div>
+        <div class="card-actions" style="margin-top:15px;padding-top:12px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:var(--muted)">{{ student_counts.get(c.id,0) }} students</span><div class="btn-group"><a class="btn btn-sm btn-secondary" href="{{ url_for('admin.edit_course',course_id=c.id) }}">Edit</a><form method="post" action="{{ url_for('admin.delete_course',course_id=c.id) }}" class="inline-form" onsubmit="return confirm('Delete course {{ c.course_name }}?');"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-sm btn-danger">Delete</button></form></div></div>
+      </div>
+    {% else %}<div class="panel empty">No {{ section_title }} courses added yet.</div>{% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+  {% set unassigned = courses|selectattr('category','equalto','engineering')|selectattr('engineering_section','none')|list %}
+  {% if unassigned %}<div class="panel" style="margin-top:10px"><strong>Engineering courses without a section</strong><p style="color:var(--muted);font-size:12px">Edit these courses and assign one of the seven engineering sections.</p></div>{% endif %}
+</section>
 {% endblock %}

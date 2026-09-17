@@ -30,6 +30,7 @@ class Course(db.Model):
     duration = db.Column(db.String(100))
     eligibility = db.Column(db.String(500))
     category = db.Column(db.String(30), default='management', nullable=False, index=True)
+    engineering_section = db.Column(db.String(40), nullable=True, index=True)
     fees = db.Column(db.Numeric(10, 2), nullable=True)
     description = db.Column(db.Text)
     status = db.Column(db.String(30), default='active', nullable=False)
