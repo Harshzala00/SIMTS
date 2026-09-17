@@ -29,9 +29,9 @@
                     <option value="engineering" {% if (course and course.category == 'engineering') or (not course and preset_category == 'engineering') %}selected{% endif %}>Engineering</option>
                 </select>
             </div>
-            <div id="engineering-section-field">
+            <div id="engineering-section-field" style="display: {% if (course and course.category == 'engineering') or (not course and preset_category == 'engineering') %}block{% else %}none{% endif %};">
                 <label>Engineering Section *</label>
-                <select name="engineering_section" id="engineering_section">
+                <select name="engineering_section" id="engineering_section" {% if (course and course.category == 'engineering') or (not course and preset_category == 'engineering') %}required{% endif %}>
                     <option value="">Select Engineering Section</option>
                     <option value="civil" {% if (course and course.engineering_section == 'civil') or (not course and preset_engineering_section == 'civil') %}selected{% endif %}>Civil Engineering</option>
                     <option value="mechanical" {% if (course and course.engineering_section == 'mechanical') or (not course and preset_engineering_section == 'mechanical') %}selected{% endif %}>Mechanical Engineering</option>
@@ -83,17 +83,23 @@ Credits: 120">{{ course.description if course else '' }}</textarea>
     </form>
 </div>
 <script>
-(function(){
-  const category=document.querySelector('select[name="category"]');
-  const field=document.getElementById('engineering-section-field');
-  const select=document.getElementById('engineering_section');
-  function sync(){
-    const engineering=category && category.value==='engineering';
-    if(field) field.style.display=engineering?'block':'none';
-    if(select) select.required=engineering;
+document.addEventListener('DOMContentLoaded', function(){
+  const category = document.querySelector('select[name="category"]');
+  const field = document.getElementById('engineering-section-field');
+  const select = document.getElementById('engineering_section');
+  function syncCategory(){
+    if(!category || !field || !select) return;
+    const isEng = category.value === 'engineering';
+    field.style.display = isEng ? 'block' : 'none';
+    select.required = isEng;
+    if(!isEng){
+      select.value = '';
+    }
   }
-  category?.addEventListener('change',sync);
-  sync();
-})();
+  if(category){
+    category.addEventListener('change', syncCategory);
+    syncCategory();
+  }
+});
 </script>
 {% endblock %}

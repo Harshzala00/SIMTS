@@ -172,7 +172,7 @@ def view_certificate(certificate_id):
 
 
 def _image_mimetype(filename):
-    name = str(filename or "").lower()
+    name = str(filename or "").lower().split("?")[0].split("#")[0]
 
     if name.endswith(".png"):
         return "image/png"
@@ -180,7 +180,8 @@ def _image_mimetype(filename):
     if name.endswith(".jpg") or name.endswith(".jpeg"):
         return "image/jpeg"
 
-    return "application/octet-stream"
+    # Default fallback for image rendering
+    return "image/png"
 
 
 @public_bp.route("/about")

@@ -111,7 +111,7 @@ def download_to_temp(file_reference):
 
     try:
         try:
-            from vercel.blob import get
+            from vercel.blob import get, download_file
         except ImportError as exc:
             raise BlobStorageError(
                 "The Vercel Python SDK is not installed. Add vercel>=0.5.0 to requirements.txt."
@@ -119,18 +119,24 @@ def download_to_temp(file_reference):
 
         result = get(reference, access="private")
 
-        if result is None or getattr(result, "status_code", None) != 200:
+        if result is None or getattr(result, "status_code", 200) not in {200, None}:
             temp_path.unlink(missing_ok=True)
             status = getattr(result, "status_code", "not found")
             raise BlobStorageError(f"Vercel Blob returned status {status}.")
 
-        stream = getattr(result, "stream", None)
-        if stream is None:
-            temp_path.unlink(missing_ok=True)
-            raise BlobStorageError("Vercel Blob returned no image stream.")
-
-        # The Python SDK exposes the response body as an AsyncIterator[bytes].
-        asyncio.run(_write_blob_stream(stream, temp_path))
+        # Vercel Python SDK GetBlobResult contains image bytes in .content
+        content = getattr(result, "content", None)
+        if content is not None and len(content) > 0:
+            temp_path.write_bytes(content)
+        elif getattr(result, "stream", None) is not None:
+            asyncio.run(_write_blob_stream(result.stream, temp_path))
+        else:
+            # Fallback to direct download_file
+            try:
+                download_file(reference, temp_path, access="private", overwrite=True)
+            except Exception as dl_err:
+                temp_path.unlink(missing_ok=True)
+                raise BlobStorageError(f"Vercel Blob download returned no data: {dl_err}") from dl_err
 
         if not temp_path.exists() or temp_path.stat().st_size == 0:
             temp_path.unlink(missing_ok=True)
