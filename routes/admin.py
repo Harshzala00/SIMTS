@@ -193,8 +193,15 @@ def delete_student(student_id):
     sid, name = student.student_id, student.full_name
     if blob_enabled():
         for cert in student.certificates:
-            try: delete_file(cert.file_name)
-            except BlobStorageError: pass
+            try:
+                if _is_remote_file_reference(cert.file_name):
+                    delete_file(cert.file_name)
+            except BlobStorageError as exc:
+                current_app.logger.warning(
+                    "Could not delete certificate blob %s: %s",
+                    cert.file_name,
+                    exc,
+                )
     else:
         upload_dir = Path(current_app.config['UPLOAD_FOLDER']).resolve()
         for cert in student.certificates:
@@ -457,21 +464,30 @@ def edit_certificate(certificate_id):
         return redirect(url_for('admin.certificates'))
     return render_template('admin/certificate_form.html', certificate=certificate)
 
-@admin_bp.route('/certificates/<int:certificate_id>/delete', methods=['POST'])
-@protect
 def _is_remote_file_reference(reference):
     value = str(reference or '').strip().lower()
     return value.startswith('http://') or value.startswith('https://')
 
+
+@admin_bp.route('/certificates/<int:certificate_id>/delete', methods=['POST'])
+@protect
 def delete_certificate(certificate_id):
     certificate = db.session.get(Certificate, certificate_id)
     if not certificate:
         flash('Certificate not found.', 'error'); return redirect(url_for('admin.certificates'))
     number = certificate.certificate_number
     try:
-        delete_file(certificate.file_name)
-    except BlobStorageError:
-        pass
+        # Remote Vercel Blob references are deleted through blob_storage.
+        # Local files are handled separately below.
+        if blob_enabled() and _is_remote_file_reference(certificate.file_name):
+            delete_file(certificate.file_name)
+    except BlobStorageError as exc:
+        current_app.logger.warning(
+            "Could not delete certificate blob %s: %s",
+            certificate.file_name,
+            exc,
+        )
+
     if not blob_enabled() and not _is_remote_file_reference(certificate.file_name):
         local_name = Path(str(certificate.file_name)).name
         (Path(current_app.config['UPLOAD_FOLDER']).resolve() / local_name).unlink(missing_ok=True)
