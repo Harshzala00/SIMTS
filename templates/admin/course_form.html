@@ -24,7 +24,7 @@
             </div>
             <div>
                 <label>Course Category *</label>
-                <select name="category" required>
+                <select name="category" id="course_category" required onchange="syncCategory()">
                     <option value="management" {% if (course and course.category == 'management') or (not course and preset_category == 'management') %}selected{% endif %}>Management</option>
                     <option value="engineering" {% if (course and course.category == 'engineering') or (not course and preset_category == 'engineering') %}selected{% endif %}>Engineering</option>
                 </select>
@@ -83,23 +83,24 @@ Credits: 120">{{ course.description if course else '' }}</textarea>
     </form>
 </div>
 <script>
-document.addEventListener('DOMContentLoaded', function(){
-  const category = document.querySelector('select[name="category"]');
-  const field = document.getElementById('engineering-section-field');
-  const select = document.getElementById('engineering_section');
-  function syncCategory(){
-    if(!category || !field || !select) return;
-    const isEng = category.value === 'engineering';
-    field.style.display = isEng ? 'block' : 'none';
-    select.required = isEng;
+function syncCategory(){
+  var cat = document.getElementById('course_category') || document.querySelector('select[name="category"]');
+  var fld = document.getElementById('engineering-section-field');
+  var sel = document.getElementById('engineering_section');
+  if(!cat || !fld) return;
+  var isEng = (cat.value === 'engineering');
+  fld.style.display = isEng ? 'block' : 'none';
+  if(sel){
+    sel.required = isEng;
     if(!isEng){
-      select.value = '';
+      sel.value = '';
     }
   }
-  if(category){
-    category.addEventListener('change', syncCategory);
-    syncCategory();
-  }
-});
+}
+syncCategory();
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', syncCategory);
+}
+window.addEventListener('load', syncCategory);
 </script>
 {% endblock %}
