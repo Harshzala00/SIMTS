@@ -320,15 +320,6 @@ def import_students():
             if 'COMPUTER' in u: return 'computer'
             return 'other'
 
-        def generate_course_code(course_name):
-            m = re.search(r'\(([A-Z0-9]+)\)$', course_name.upper())
-            base = m.group(1) if m else re.sub(r'[^A-Z0-9]+', '', course_name.upper())[:30] or 'COURSE'
-            code = base[:50]
-            n = 2
-            while Course.query.filter(func.lower(Course.course_code) == code.lower()).first():
-                code = f'{base[:46]}-{n}'
-                n += 1
-            return code
 
         count = skipped = created_courses = 0
         for row in rows[1:]:
@@ -348,17 +339,12 @@ def import_students():
                 continue
 
             normalized_course = normalize_course_name(course_value)
-            # Match by normalized full name, or by abbreviation in parentheses.
+            # Match courses by their full normalized name only.
             course = Course.query.filter(func.lower(Course.course_name) == normalized_course.lower()).first()
-            if not course:
-                m = re.search(r'\(([A-Z0-9]+)\)$', normalized_course)
-                if m:
-                    code = m.group(1)
-                    course = Course.query.filter(func.lower(Course.course_code) == code.lower()).first()
             if not course:
                 category = course_category(normalized_course)
                 section = engineering_section_for(normalized_course) if category == 'engineering' else None
-                course = Course(course_code=generate_course_code(normalized_course), course_name=normalized_course,
+                course = Course(course_name=normalized_course,
                                 category=category, engineering_section=section, status='active')
                 db.session.add(course)
                 db.session.flush()
@@ -409,7 +395,7 @@ def add_course():
     if preset_section not in ENGINEERING_SECTION_KEYS:
         preset_section = ''
     if request.method == 'POST':
-        code, name = clean(request.form.get('course_code'), 50), clean(request.form.get('course_name'), 200)
+        name = clean(request.form.get('course_name'), 200)
         category = clean(request.form.get('category'), 30).lower()
         if category not in {'management', 'engineering'}: category = 'management'
         engineering_section = clean(request.form.get('engineering_section'), 40).lower() or None
@@ -418,20 +404,17 @@ def add_course():
             return redirect(url_for('admin.add_course'))
         if category == 'management':
             engineering_section = None
-        if not code or not name:
-            flash('Course code and name are required.', 'error')
+        if not name:
+            flash('Course name is required.', 'error')
             return redirect(url_for('admin.add_course'))
-        if Course.query.filter_by(course_code=code).first():
-            flash('Course code already exists.', 'error')
-            return redirect(url_for('admin.add_course'))
-        course = Course(course_code=code, course_name=name, category=category, engineering_section=engineering_section,
+        course = Course(course_name=name, category=category, engineering_section=engineering_section,
                         duration=clean(request.form.get('duration'), 100),
                         eligibility=clean(request.form.get('eligibility'), 500),
                         fees=parse_course_fee(request.form.get('fees')),
                         status=clean(request.form.get('status'), 30) or 'active',
                         description=(request.form.get('description') or '').strip()[:10000])
         db.session.add(course); db.session.commit()
-        audit('CREATE_COURSE', code); flash('Course added.', 'success')
+        audit('CREATE_COURSE', name); flash('Course added.', 'success')
         return redirect(url_for('admin.courses'))
     return render_template('admin/course_form.html', course=None, preset_category=('engineering' if preset_section else 'management'), preset_engineering_section=preset_section)
 
@@ -442,7 +425,7 @@ def edit_course(course_id):
     if not course:
         flash('Course not found.', 'error'); return redirect(url_for('admin.courses'))
     if request.method == 'POST':
-        code, name = clean(request.form.get('course_code'), 50), clean(request.form.get('course_name'), 200)
+        name = clean(request.form.get('course_name'), 200)
         category = clean(request.form.get('category'), 30).lower()
         if category not in {'management', 'engineering'}: category = 'management'
         engineering_section = clean(request.form.get('engineering_section'), 40).lower() or None
@@ -451,18 +434,15 @@ def edit_course(course_id):
             return redirect(url_for('admin.edit_course', course_id=course.id))
         if category == 'management':
             engineering_section = None
-        if not code or not name:
-            flash('Course code and name are required.', 'error'); return redirect(url_for('admin.edit_course', course_id=course.id))
-        existing = Course.query.filter_by(course_code=code).first()
-        if existing and existing.id != course.id:
-            flash('Course code already in use by another course.', 'error'); return redirect(url_for('admin.edit_course', course_id=course.id))
-        course.course_code, course.course_name, course.category, course.engineering_section = code, name, category, engineering_section
+        if not name:
+            flash('Course name is required.', 'error'); return redirect(url_for('admin.edit_course', course_id=course.id))
+        course.course_name, course.category, course.engineering_section = name, category, engineering_section
         course.duration = clean(request.form.get('duration'), 100)
         course.eligibility = clean(request.form.get('eligibility'), 500)
         course.fees = parse_course_fee(request.form.get('fees'))
         course.status = clean(request.form.get('status'), 30) or 'active'
         course.description = (request.form.get('description') or '').strip()[:10000]
-        db.session.commit(); audit('EDIT_COURSE', code); flash('Course updated successfully.', 'success')
+        db.session.commit(); audit('EDIT_COURSE', name); flash('Course updated successfully.', 'success')
         return redirect(url_for('admin.courses'))
     return render_template('admin/course_form.html', course=course)
 
@@ -472,10 +452,10 @@ def delete_course(course_id):
     course = db.session.get(Course, course_id)
     if not course:
         flash('Course not found.', 'error'); return redirect(url_for('admin.courses'))
-    code = course.course_code
+    name = course.course_name
     Student.query.filter_by(course_id=course.id).update({'course_id': None})
-    db.session.delete(course); db.session.commit(); audit('DELETE_COURSE', code)
-    flash(f'Course {code} deleted successfully.', 'success'); return redirect(url_for('admin.courses'))
+    db.session.delete(course); db.session.commit(); audit('DELETE_COURSE', name)
+    flash(f'Course {name} deleted successfully.', 'success'); return redirect(url_for('admin.courses'))
 
 # ============================================================
 # CERTIFICATE IMAGE MANAGEMENT

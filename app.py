@@ -21,6 +21,9 @@ def sync_database_schema(app):
             with db.engine.connect() as conn:
                 dialect = db.engine.dialect.name
                 if dialect == 'postgresql':
+                    # Course codes are no longer part of SIMTS. Remove the legacy
+                    # column if it exists in an older PostgreSQL database.
+                    conn.execute(db.text("ALTER TABLE course DROP COLUMN IF EXISTS course_code"))
                     conn.execute(db.text("""
                         DO $$
                         BEGIN
@@ -69,6 +72,16 @@ def sync_database_schema(app):
                         if col not in student_cols:
                             conn.execute(db.text(sql))
                     course_cols = {row[1] for row in conn.execute(db.text("PRAGMA table_info(course)")).fetchall()}
+                    if 'course_code' in course_cols:
+                        try:
+                            conn.execute(db.text("ALTER TABLE course DROP COLUMN course_code"))
+                        except Exception:
+                            # Older SQLite versions may not support DROP COLUMN.
+                            # The active SQLite builds used by SIMTS support it; if
+                            # an older build is encountered, leave the legacy column
+                            # until the database is recreated/migrated manually.
+                            pass
+                        course_cols = {row[1] for row in conn.execute(db.text("PRAGMA table_info(course)")).fetchall()}
                     if 'category' not in course_cols:
                         conn.execute(db.text("ALTER TABLE course ADD COLUMN category VARCHAR(30) DEFAULT 'management'"))
                     if 'fees' not in course_cols:

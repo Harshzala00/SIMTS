@@ -7,7 +7,7 @@
   <div class="course-admin-grid">
   {% for c in courses if c.category == 'management' %}
     <div class="panel course-admin">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="course-code">{{ c.course_code }}</span><span class="badge {{ c.status }}">{{ c.status }}</span></div>
+      <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:8px"><span class="badge {{ c.status }}">{{ c.status }}</span></div>
       <h2>{{ c.course_name }}</h2>
       <div class="course-description">{{ c.description or 'No description added.' }}</div>
       <div style="margin:12px 0"><small style="color:var(--muted);display:block">Duration &amp; Eligibility</small><strong>{{ c.duration or '—' }}</strong>{% if c.eligibility %}<div style="font-size:12px;color:var(--muted);margin-top:4px">{{ c.eligibility }}</div>{% endif %}<div style="font-size:13px;margin-top:8px"><strong>Fees:</strong> {% if c.fees is not none %}₹{{ '%.2f'|format(c.fees|float) }} / Year{% else %}Fees on request{% endif %}</div></div>
@@ -18,7 +18,7 @@
 </section>
 
 <section class="admin-course-category">
-  <div class="panel-head"><div><h2>Engineering Courses</h2><span style="font-size:12px;color:var(--muted)">Add courses directly to one of the 7 engineering sections.</span></div><span style="font-size:12px;color:var(--muted)">7 sections</span></div>
+  <div class="panel-head"><div><h2>Engineering Courses</h2><span style="font-size:12px;color:var(--muted)">Add courses directly to one of the 8 engineering sections.</span></div><span style="font-size:12px;color:var(--muted)">8 sections</span></div>
   {% for section_key, section_title in engineering_sections %}
   <div style="margin-bottom:24px">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
@@ -28,7 +28,7 @@
     <div class="course-admin-grid">
     {% for c in courses if c.category == 'engineering' and c.engineering_section == section_key %}
       <div class="panel course-admin">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="course-code">{{ c.course_code }}</span><span class="badge {{ c.status }}">{{ c.status }}</span></div>
+        <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:8px"><span class="badge {{ c.status }}">{{ c.status }}</span></div>
         <h2>{{ c.course_name }}</h2>
         <div class="course-description">{{ c.description or 'No description added.' }}</div>
         <div style="margin:12px 0"><small style="color:var(--muted);display:block">Duration &amp; Eligibility</small><strong>{{ c.duration or '—' }}</strong>{% if c.eligibility %}<div style="font-size:12px;color:var(--muted);margin-top:4px">{{ c.eligibility }}</div>{% endif %}<div style="font-size:13px;margin-top:8px"><strong>Fees:</strong> {% if c.fees is not none %}₹{{ '%.2f'|format(c.fees|float) }} / Year{% else %}Fees on request{% endif %}</div></div>
@@ -39,6 +39,6 @@
   </div>
   {% endfor %}
   {% set unassigned = courses|selectattr('category','equalto','engineering')|selectattr('engineering_section','none')|list %}
-  {% if unassigned %}<div class="panel" style="margin-top:10px"><strong>Engineering courses without a section</strong><p style="color:var(--muted);font-size:12px">Edit these courses and assign one of the seven engineering sections.</p></div>{% endif %}
+  {% if unassigned %}<div class="panel" style="margin-top:10px"><strong>Engineering courses without a section</strong><p style="color:var(--muted);font-size:12px">Edit these courses and assign one of the eight engineering sections.</p></div>{% endif %}
 </section>
 {% endblock %}
