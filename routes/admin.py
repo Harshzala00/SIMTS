@@ -253,7 +253,84 @@ def import_students():
             flash('Required columns: Student code, Name, Email, Course. Optional: Passing grade, Passing year.', 'error')
             return redirect(url_for('admin.import_students'))
 
-        count = skipped = 0
+        # Normalize legacy spreadsheet course names to the institute catalogue convention.
+        def normalize_course_name(value):
+            raw = re.sub(r'\s+', ' ', clean(value, 200)).strip()
+            upper = raw.upper()
+            m = re.match(r'^\s*([A-Z0-9]+)\s*\(\s*(.*?)\s*\)\s*$', upper)
+            code = m.group(1) if m else ''
+            title = m.group(2) if m else upper
+            title = re.sub(r'\bPOST\s+GRADUATE\b', 'POSTGRADUATE', title)
+            title = re.sub(r'\bGRADUTE\b', 'GRADUATE', title)
+            title = re.sub(r'\bGRADUATE\b', 'POSTGRADUATE', title)
+            title = re.sub(r'\bMEHCHANICAL\b', 'MECHANICAL', title)
+            title = re.sub(r'\bMEHCANICAL\b', 'MECHANICAL', title)
+            title = re.sub(r'\bARTITECTURE\b', 'ARCHITECTURE', title)
+            title = re.sub(r'\bDIPOMA\b', 'DIPLOMA', title)
+            title = re.sub(r'\bGRADUTE\b', 'GRADUATE', title)
+            title = re.sub(r'\s+', ' ', title).strip()
+            # Specific legacy abbreviations / website-aligned names.
+            known = {
+                'GBA': 'POSTGRADUATE IN BUSINESS ADMINISTRATION',
+                'GDBA': 'POSTGRADUATE DIPLOMA IN BUSINESS ADMINISTRATION',
+                'PDBA': 'PROFESSIONAL DIPLOMA IN BUSINESS ADMINISTRATION',
+                'MBA': 'MASTER IN BUSINESS ADMINISTRATION',
+                'MPBA': 'MASTER PROGRAMME IN BUSINESS ADMINISTRATION',
+                'EMBA': 'EXECUTIVE MASTER IN BUSINESS ADMINISTRATION',
+                'PDM': 'PROFESSIONAL DOCTRATE IN MANAGEMENT',
+                'DBA': 'DIPLOMA IN BUSINESS ADMINISTRATION',
+                'DCA': 'DIPLOMA IN COMPUTER APPLICATION',
+                'GCA': 'POSTGRADUATE IN COMPUTER APPLICATION',
+                'PGDCA': 'POSTGRADUATE DIPLOMA IN COMPUTER APPLICATION',
+                'MCA': 'MASTER IN COMPUTER APPLICATION',
+                'GHM': 'POSTGRADUATE IN HOTEL MANAGEMENT',
+                'DME': 'DIPLOMA IN MECHANICAL ENGINEERING',
+                'GDME': 'POSTGRADUATE DIPLOMA IN MECHANICAL ENGINEERING',
+                'GME': 'POSTGRADUATE IN MECHANICAL ENGINEERING',
+                'DCE': 'DIPLOMA IN CIVIL ENGINEERING',
+                'DAE': 'DIPLOMA IN ARCHITECTURE ENGINEERING',
+                'DEE': 'DIPLOMA IN ELECTRICAL ENGINEERING',
+                'GEE': 'POSTGRADUATE IN ELECTRICAL ENGINEERING',
+                'GAM': 'POSTGRADUATE IN AUTOMOBILE ENGINEERING',
+                'CDCN': 'CERTIFIED DIPLOMA IN COMPUTER NETWORKING',
+                'DECE': 'DIPLOMA IN ELECTRONICS & COMMUNICATION ENGINEERING',
+                'GDECE': 'POSTGRADUATE DIPLOMA IN ELECTRONICS & COMMUNICATION ENGINEERING',
+                'GECE': 'POSTGRADUATE IN ELECTRONICS & COMMUNICATION ENGINEERING',
+            }
+            if code in known:
+                title = known[code]
+            # If no known code, use the cleaned text. Keep an input abbreviation if present.
+            if code:
+                return f'{title} ({code})'
+            return title
+
+        def course_category(course_name):
+            u = course_name.upper()
+            engineering_words = ('ENGINEERING', 'MECHANICAL', 'CIVIL', 'ELECTRICAL', 'ELECTRONICS', 'AUTOMOBILE', 'CHEMICAL', 'ARCHITECTURE', 'COMPUTER NETWORKING')
+            return 'engineering' if any(w in u for w in engineering_words) else 'management'
+
+        def engineering_section_for(course_name):
+            u = course_name.upper()
+            if 'MECHANICAL' in u: return 'mechanical'
+            if 'CHEMICAL' in u: return 'chemical'
+            if 'CIVIL' in u: return 'civil'
+            if 'ELECTRICAL' in u and 'ELECTRONICS' not in u: return 'electrical'
+            if 'ELECTRONICS' in u or 'ELECTRONICS &' in u: return 'electronics'
+            if 'AUTOMOBILE' in u: return 'automobile'
+            if 'COMPUTER' in u: return 'computer'
+            return 'other'
+
+        def generate_course_code(course_name):
+            m = re.search(r'\(([A-Z0-9]+)\)$', course_name.upper())
+            base = m.group(1) if m else re.sub(r'[^A-Z0-9]+', '', course_name.upper())[:30] or 'COURSE'
+            code = base[:50]
+            n = 2
+            while Course.query.filter(func.lower(Course.course_code) == code.lower()).first():
+                code = f'{base[:46]}-{n}'
+                n += 1
+            return code
+
+        count = skipped = created_courses = 0
         for row in rows[1:]:
             data = dict(zip(headers, row))
             sid = clean(data.get('student_code'), 80)
@@ -262,6 +339,7 @@ def import_students():
             course_value = clean(data.get('course'), 200)
             grade = clean(data.get('passing_grade'), 50)
             year = parse_passing_year(data.get('passing_year'))
+            # Email and year remain required for the existing SIMTS import contract.
             if not sid or not name or not email or not course_value or year is None:
                 skipped += 1
                 continue
@@ -269,36 +347,22 @@ def import_students():
                 skipped += 1
                 continue
 
-            course = Course.query.filter(func.lower(Course.course_name) == course_value.lower()).first()
+            normalized_course = normalize_course_name(course_value)
+            # Match by normalized full name, or by abbreviation in parentheses.
+            course = Course.query.filter(func.lower(Course.course_name) == normalized_course.lower()).first()
             if not course:
-                # Automatically create a course so students are never skipped merely
-                # because the course was not yet present in the catalogue.
-                # Engineering-looking names are placed in Other Engineering and can
-                # be reclassified later from the admin course editor.
-                engineering_words = (
-                    'engineering', 'technology', 'b.tech', 'btech', 'm.tech', 'mtech',
-                    'civil', 'mechanical', 'chemical', 'electrical', 'electronics',
-                    'automobile', 'computer science', 'information technology'
-                )
-                lower_course = course_value.lower()
-                is_engineering = any(word in lower_course for word in engineering_words)
-                category = 'engineering' if is_engineering else 'management'
-                section = 'other' if is_engineering else None
-
-                # Generate a private internal identifier. It is not shown anywhere
-                # in the admin/public UI and is used only for the database constraint.
-                base_code = 'AUTO-' + re.sub(r'[^A-Z0-9]+', '-', course_value.upper()).strip('-')[:35]
-                code = base_code or 'AUTO-COURSE'
-                suffix = 1
-                while Course.query.filter_by(course_code=code).first():
-                    suffix += 1
-                    code = f'{base_code[:30]}-{suffix}'
-                course = Course(
-                    course_code=code, course_name=course_value.upper(),
-                    category=category, engineering_section=section, status='active'
-                )
+                m = re.search(r'\(([A-Z0-9]+)\)$', normalized_course)
+                if m:
+                    code = m.group(1)
+                    course = Course.query.filter(func.lower(Course.course_code) == code.lower()).first()
+            if not course:
+                category = course_category(normalized_course)
+                section = engineering_section_for(normalized_course) if category == 'engineering' else None
+                course = Course(course_code=generate_course_code(normalized_course), course_name=normalized_course,
+                                category=category, engineering_section=section, status='active')
                 db.session.add(course)
                 db.session.flush()
+                created_courses += 1
 
             db.session.add(Student(
                 student_id=sid, full_name=name, email=email,
@@ -308,8 +372,8 @@ def import_students():
             count += 1
 
         db.session.commit()
-        audit('IMPORT_STUDENTS', f'{count} imported / {skipped} skipped')
-        flash(f'Imported {count} students; skipped {skipped}.', 'success')
+        audit('IMPORT_STUDENTS', f'{count} imported / {skipped} skipped / {created_courses} courses created')
+        flash(f'Imported {count} students; skipped {skipped}; created {created_courses} missing courses.', 'success')
         return redirect(url_for('admin.students'))
     return render_template('admin/import_students.html')
 
@@ -345,27 +409,21 @@ def add_course():
     if preset_section not in ENGINEERING_SECTION_KEYS:
         preset_section = ''
     if request.method == 'POST':
-        name = clean(request.form.get('course_name'), 200)
+        code, name = clean(request.form.get('course_code'), 50), clean(request.form.get('course_name'), 200)
         category = clean(request.form.get('category'), 30).lower()
-        if category not in {'management', 'engineering'}:
-            category = 'management'
+        if category not in {'management', 'engineering'}: category = 'management'
         engineering_section = clean(request.form.get('engineering_section'), 40).lower() or None
         if category == 'engineering' and engineering_section not in ENGINEERING_SECTION_KEYS:
             flash('Please select an Engineering section.', 'error')
             return redirect(url_for('admin.add_course'))
         if category == 'management':
             engineering_section = None
-        if not name:
-            flash('Course name is required.', 'error')
+        if not code or not name:
+            flash('Course code and name are required.', 'error')
             return redirect(url_for('admin.add_course'))
-
-        base_code = 'AUTO-' + re.sub(r'[^A-Z0-9]+', '-', name.upper()).strip('-')[:35]
-        code = base_code or 'AUTO-COURSE'
-        suffix = 1
-        while Course.query.filter_by(course_code=code).first():
-            suffix += 1
-            code = f'{base_code[:30]}-{suffix}'
-
+        if Course.query.filter_by(course_code=code).first():
+            flash('Course code already exists.', 'error')
+            return redirect(url_for('admin.add_course'))
         course = Course(course_code=code, course_name=name, category=category, engineering_section=engineering_section,
                         duration=clean(request.form.get('duration'), 100),
                         eligibility=clean(request.form.get('eligibility'), 500),
@@ -373,7 +431,7 @@ def add_course():
                         status=clean(request.form.get('status'), 30) or 'active',
                         description=(request.form.get('description') or '').strip()[:10000])
         db.session.add(course); db.session.commit()
-        audit('CREATE_COURSE', name); flash('Course added.', 'success')
+        audit('CREATE_COURSE', code); flash('Course added.', 'success')
         return redirect(url_for('admin.courses'))
     return render_template('admin/course_form.html', course=None, preset_category=('engineering' if preset_section else 'management'), preset_engineering_section=preset_section)
 
@@ -384,25 +442,27 @@ def edit_course(course_id):
     if not course:
         flash('Course not found.', 'error'); return redirect(url_for('admin.courses'))
     if request.method == 'POST':
-        name = clean(request.form.get('course_name'), 200)
+        code, name = clean(request.form.get('course_code'), 50), clean(request.form.get('course_name'), 200)
         category = clean(request.form.get('category'), 30).lower()
-        if category not in {'management', 'engineering'}:
-            category = 'management'
+        if category not in {'management', 'engineering'}: category = 'management'
         engineering_section = clean(request.form.get('engineering_section'), 40).lower() or None
         if category == 'engineering' and engineering_section not in ENGINEERING_SECTION_KEYS:
             flash('Please select an Engineering section.', 'error')
             return redirect(url_for('admin.edit_course', course_id=course.id))
         if category == 'management':
             engineering_section = None
-        if not name:
-            flash('Course name is required.', 'error'); return redirect(url_for('admin.edit_course', course_id=course.id))
-        course.course_name, course.category, course.engineering_section = name, category, engineering_section
+        if not code or not name:
+            flash('Course code and name are required.', 'error'); return redirect(url_for('admin.edit_course', course_id=course.id))
+        existing = Course.query.filter_by(course_code=code).first()
+        if existing and existing.id != course.id:
+            flash('Course code already in use by another course.', 'error'); return redirect(url_for('admin.edit_course', course_id=course.id))
+        course.course_code, course.course_name, course.category, course.engineering_section = code, name, category, engineering_section
         course.duration = clean(request.form.get('duration'), 100)
         course.eligibility = clean(request.form.get('eligibility'), 500)
         course.fees = parse_course_fee(request.form.get('fees'))
         course.status = clean(request.form.get('status'), 30) or 'active'
         course.description = (request.form.get('description') or '').strip()[:10000]
-        db.session.commit(); audit('EDIT_COURSE', name); flash('Course updated successfully.', 'success')
+        db.session.commit(); audit('EDIT_COURSE', code); flash('Course updated successfully.', 'success')
         return redirect(url_for('admin.courses'))
     return render_template('admin/course_form.html', course=course)
 
@@ -412,10 +472,10 @@ def delete_course(course_id):
     course = db.session.get(Course, course_id)
     if not course:
         flash('Course not found.', 'error'); return redirect(url_for('admin.courses'))
-    name = course.course_name
+    code = course.course_code
     Student.query.filter_by(course_id=course.id).update({'course_id': None})
-    db.session.delete(course); db.session.commit(); audit('DELETE_COURSE', name)
-    flash(f'Course {name} deleted successfully.', 'success'); return redirect(url_for('admin.courses'))
+    db.session.delete(course); db.session.commit(); audit('DELETE_COURSE', code)
+    flash(f'Course {code} deleted successfully.', 'success'); return redirect(url_for('admin.courses'))
 
 # ============================================================
 # CERTIFICATE IMAGE MANAGEMENT

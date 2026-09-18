@@ -2,9 +2,8 @@
 {% block title %}Courses & Programs | Sai Institute of Management & Technology Studies{% endblock %}
 {% block content %}
 <section class="page-hero compact"><div class="container narrow"><span class="eyebrow">ACADEMIC PROGRAMMES</span><h1>Courses &amp; Programs</h1><p>Choose an academic area to explore its programmes.</p></div></section>
-<section class="section course-selector-page"><div class="container"><div class="section-heading centered"><span class="section-kicker">ACADEMIC AREAS</span><h2>Explore Our Courses</h2><p>Management and Engineering programmes are displayed on their dedicated pages.</p></div>
-<div class="selector-inner">
-  <a class="selector-card" href="{{ url_for('public.management_courses') }}"><span>01</span><div><small>ACADEMIC AREA</small><h2>Management</h2><p>Explore business, management and professional development programmes.</p></div><b>View Management Courses →</b></a>
-  <a class="selector-card" href="{{ url_for('public.engineering_courses') }}"><span>02</span><div><small>ACADEMIC AREA</small><h2>Engineering</h2><p>Explore Engineering programmes by discipline on a dedicated page.</p></div><b>View Engineering Courses →</b></a>
+<section class="section"><div class="container"><div class="programme-grid">
+<a class="programme-card management" href="{{ url_for('public.management_courses') }}"><div><span>01</span><h3>Management</h3><p>Explore management, business and professional development programmes.</p></div><b>Explore →</b></a>
+<a class="programme-card engineering" href="{{ url_for('public.engineering_courses') }}"><div><span>02</span><h3>Engineering</h3><p>Explore eight engineering disciplines and their programmes.</p></div><b>Explore →</b></a>
 </div></div></section>
 {% endblock %}

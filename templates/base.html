@@ -23,8 +23,6 @@
       <a href="{{ url_for('public.home') }}">Home</a>
       <a href="{{ url_for('public.about') }}">About Us</a>
       <a href="{{ url_for('public.courses') }}">Courses</a>
-      <a href="{{ url_for('public.management_courses') }}">Management</a>
-      <a href="{{ url_for('public.engineering_courses') }}">Engineering</a>
       <a href="{{ url_for('public.admission_verification') }}">Admission Verification</a>
       <a href="{{ url_for('public.contact') }}">Contact</a>
     </nav>
@@ -42,10 +40,7 @@
       <img src="{{ url_for('static', filename='images/simts-logo.png') }}" alt="SIMTS" class="footer-logo">
       <div><strong>Sai Institute of Management &amp; Technology Studies</strong><p>Career-oriented education focused on knowledge, practical understanding and professional development.</p></div>
     </div>
-    <div><h4>Quick Links</h4><a href="{{ url_for('public.about') }}">About Us</a><a href="{{ url_for('public.courses') }}">Courses</a>
-      <a href="{{ url_for('public.management_courses') }}">Management</a>
-      <a href="{{ url_for('public.engineering_courses') }}">Engineering</a><a href="{{ url_for('public.admission_verification') }}">Admission Verification</a><a href="{{ url_for('public.contact') }}">Contact</a></div>
-    <div><h4>Academic Areas</h4><a href="{{ url_for('public.management_courses') }}">Management</a><a href="{{ url_for('public.courses', category='engineering') }}">Engineering</a><span>Student-focused learning</span><span>Professional development</span></div>
+    <div><h4>Quick Links</h4><a href="{{ url_for('public.about') }}">About Us</a><a href="{{ url_for('public.courses') }}">Courses</a><a href="{{ url_for('public.admission_verification') }}">Admission Verification</a><a href="{{ url_for('public.contact') }}">Contact</a></div>
   </div>
   <div class="trust-section">
     <div class="trust-heading"><span>INSTITUTE INFORMATION</span><h3>Committed to meaningful, career-oriented education</h3></div>

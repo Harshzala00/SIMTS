@@ -70,67 +70,46 @@ ENGINEERING_SECTION_KEYS = {key for key, _ in ENGINEERING_SECTIONS}
 
 @public_bp.route("/courses")
 def courses():
-    """Academic area landing page; programme lists live on dedicated pages."""
     return render_template("courses.html")
 
 
 @public_bp.route("/management-courses")
 def management_courses():
-    courses = (
-        Course.query.filter_by(status="active", category="management")
-        .order_by(Course.course_name).all()
-    )
+    courses = (Course.query.filter_by(status="active", category="management")
+               .order_by(Course.course_name).all())
     return render_template("management_courses.html", courses=courses)
 
 
 @public_bp.route("/engineering-courses")
 def engineering_courses():
-    selected_section = (request.args.get("section") or "").strip().lower()
-    if selected_section not in ENGINEERING_SECTION_KEYS:
-        selected_section = None
-    query = Course.query.filter_by(status="active", category="engineering")
-    if selected_section:
-        query = query.filter_by(engineering_section=selected_section)
-    courses = query.order_by(Course.course_name).all()
-    return render_template(
-        "engineering_courses.html",
-        courses=courses,
-        selected_section=selected_section,
-        engineering_sections=ENGINEERING_SECTIONS,
-    )
+    return render_template("engineering_courses.html", engineering_sections=ENGINEERING_SECTIONS)
 
 
-@public_bp.route("/admission-verification")
+@public_bp.route("/engineering-courses/<section>")
+def engineering_section(section):
+    section = (section or "").strip().lower()
+    section_map = dict(ENGINEERING_SECTIONS)
+    if section not in section_map:
+        abort(404)
+    courses = (Course.query.filter_by(status="active", category="engineering", engineering_section=section)
+               .order_by(Course.course_name).all())
+    return render_template("engineering_section.html", section_key=section, section_title=section_map[section], courses=courses)
+
+
+@public_bp.route("/admission-verification", methods=["GET", "POST"])
+@limiter.limit("30 per minute", methods=["POST"])
 def admission_verification():
-    return no_store(render_template("admission_verification.html"))
-
-
-@public_bp.route("/admission-verification/result", methods=["POST"])
-@limiter.limit("30 per minute")
-def admission_verification_result():
-    query = request.form.get("query", "").strip()
-    if len(query) > 200:
-        raise BadRequest("Verification input is too long.")
-
-    student = find_student(query)
-    certificate = None
-    if student:
-        certificate = (
-            Certificate.query
-            .filter_by(student_id=student.id, status="valid")
-            .order_by(Certificate.id.desc())
-            .first()
-        )
-
-    return no_store(
-        render_template(
-            "admission_verification_result.html",
-            student=student,
-            certificate=certificate,
-            searched=True,
-            query=query,
-        )
-    )
+    if request.method == "POST":
+        query = request.form.get("query", "").strip()
+        if len(query) > 200:
+            raise BadRequest("Verification input is too long.")
+        student = find_student(query)
+        certificate = None
+        if student:
+            certificate = (Certificate.query.filter_by(student_id=student.id, status="valid")
+                           .order_by(Certificate.id.desc()).first())
+        return no_store(render_template("admission_verification_result.html", student=student, certificate=certificate, searched=True))
+    return no_store(render_template("admission_verification.html", student=None, certificate=None, searched=False))
 
 
 @public_bp.route("/certificate/<int:certificate_id>/view")
