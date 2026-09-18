@@ -269,13 +269,36 @@ def import_students():
                 skipped += 1
                 continue
 
-            course = Course.query.filter(
-                (func.lower(Course.course_code) == course_value.lower()) |
-                (func.lower(Course.course_name) == course_value.lower())
-            ).first()
+            course = Course.query.filter(func.lower(Course.course_name) == course_value.lower()).first()
             if not course:
-                skipped += 1
-                continue
+                # Automatically create a course so students are never skipped merely
+                # because the course was not yet present in the catalogue.
+                # Engineering-looking names are placed in Other Engineering and can
+                # be reclassified later from the admin course editor.
+                engineering_words = (
+                    'engineering', 'technology', 'b.tech', 'btech', 'm.tech', 'mtech',
+                    'civil', 'mechanical', 'chemical', 'electrical', 'electronics',
+                    'automobile', 'computer science', 'information technology'
+                )
+                lower_course = course_value.lower()
+                is_engineering = any(word in lower_course for word in engineering_words)
+                category = 'engineering' if is_engineering else 'management'
+                section = 'other' if is_engineering else None
+
+                # Generate a private internal identifier. It is not shown anywhere
+                # in the admin/public UI and is used only for the database constraint.
+                base_code = 'AUTO-' + re.sub(r'[^A-Z0-9]+', '-', course_value.upper()).strip('-')[:35]
+                code = base_code or 'AUTO-COURSE'
+                suffix = 1
+                while Course.query.filter_by(course_code=code).first():
+                    suffix += 1
+                    code = f'{base_code[:30]}-{suffix}'
+                course = Course(
+                    course_code=code, course_name=course_value.upper(),
+                    category=category, engineering_section=section, status='active'
+                )
+                db.session.add(course)
+                db.session.flush()
 
             db.session.add(Student(
                 student_id=sid, full_name=name, email=email,
@@ -299,6 +322,7 @@ ENGINEERING_SECTIONS = [
     ('electronics', 'Electronics Engineering'),
     ('automobile', 'Automobile Engineering'),
     ('computer', 'Computer Engineering'),
+    ('other', 'Other Engineering'),
 ]
 ENGINEERING_SECTION_KEYS = {key for key, _ in ENGINEERING_SECTIONS}
 
@@ -321,21 +345,27 @@ def add_course():
     if preset_section not in ENGINEERING_SECTION_KEYS:
         preset_section = ''
     if request.method == 'POST':
-        code, name = clean(request.form.get('course_code'), 50), clean(request.form.get('course_name'), 200)
+        name = clean(request.form.get('course_name'), 200)
         category = clean(request.form.get('category'), 30).lower()
-        if category not in {'management', 'engineering'}: category = 'management'
+        if category not in {'management', 'engineering'}:
+            category = 'management'
         engineering_section = clean(request.form.get('engineering_section'), 40).lower() or None
         if category == 'engineering' and engineering_section not in ENGINEERING_SECTION_KEYS:
             flash('Please select an Engineering section.', 'error')
             return redirect(url_for('admin.add_course'))
         if category == 'management':
             engineering_section = None
-        if not code or not name:
-            flash('Course code and name are required.', 'error')
+        if not name:
+            flash('Course name is required.', 'error')
             return redirect(url_for('admin.add_course'))
-        if Course.query.filter_by(course_code=code).first():
-            flash('Course code already exists.', 'error')
-            return redirect(url_for('admin.add_course'))
+
+        base_code = 'AUTO-' + re.sub(r'[^A-Z0-9]+', '-', name.upper()).strip('-')[:35]
+        code = base_code or 'AUTO-COURSE'
+        suffix = 1
+        while Course.query.filter_by(course_code=code).first():
+            suffix += 1
+            code = f'{base_code[:30]}-{suffix}'
+
         course = Course(course_code=code, course_name=name, category=category, engineering_section=engineering_section,
                         duration=clean(request.form.get('duration'), 100),
                         eligibility=clean(request.form.get('eligibility'), 500),
@@ -343,7 +373,7 @@ def add_course():
                         status=clean(request.form.get('status'), 30) or 'active',
                         description=(request.form.get('description') or '').strip()[:10000])
         db.session.add(course); db.session.commit()
-        audit('CREATE_COURSE', code); flash('Course added.', 'success')
+        audit('CREATE_COURSE', name); flash('Course added.', 'success')
         return redirect(url_for('admin.courses'))
     return render_template('admin/course_form.html', course=None, preset_category=('engineering' if preset_section else 'management'), preset_engineering_section=preset_section)
 
@@ -354,27 +384,25 @@ def edit_course(course_id):
     if not course:
         flash('Course not found.', 'error'); return redirect(url_for('admin.courses'))
     if request.method == 'POST':
-        code, name = clean(request.form.get('course_code'), 50), clean(request.form.get('course_name'), 200)
+        name = clean(request.form.get('course_name'), 200)
         category = clean(request.form.get('category'), 30).lower()
-        if category not in {'management', 'engineering'}: category = 'management'
+        if category not in {'management', 'engineering'}:
+            category = 'management'
         engineering_section = clean(request.form.get('engineering_section'), 40).lower() or None
         if category == 'engineering' and engineering_section not in ENGINEERING_SECTION_KEYS:
             flash('Please select an Engineering section.', 'error')
             return redirect(url_for('admin.edit_course', course_id=course.id))
         if category == 'management':
             engineering_section = None
-        if not code or not name:
-            flash('Course code and name are required.', 'error'); return redirect(url_for('admin.edit_course', course_id=course.id))
-        existing = Course.query.filter_by(course_code=code).first()
-        if existing and existing.id != course.id:
-            flash('Course code already in use by another course.', 'error'); return redirect(url_for('admin.edit_course', course_id=course.id))
-        course.course_code, course.course_name, course.category, course.engineering_section = code, name, category, engineering_section
+        if not name:
+            flash('Course name is required.', 'error'); return redirect(url_for('admin.edit_course', course_id=course.id))
+        course.course_name, course.category, course.engineering_section = name, category, engineering_section
         course.duration = clean(request.form.get('duration'), 100)
         course.eligibility = clean(request.form.get('eligibility'), 500)
         course.fees = parse_course_fee(request.form.get('fees'))
         course.status = clean(request.form.get('status'), 30) or 'active'
         course.description = (request.form.get('description') or '').strip()[:10000]
-        db.session.commit(); audit('EDIT_COURSE', code); flash('Course updated successfully.', 'success')
+        db.session.commit(); audit('EDIT_COURSE', name); flash('Course updated successfully.', 'success')
         return redirect(url_for('admin.courses'))
     return render_template('admin/course_form.html', course=course)
 
@@ -384,10 +412,10 @@ def delete_course(course_id):
     course = db.session.get(Course, course_id)
     if not course:
         flash('Course not found.', 'error'); return redirect(url_for('admin.courses'))
-    code = course.course_code
+    name = course.course_name
     Student.query.filter_by(course_id=course.id).update({'course_id': None})
-    db.session.delete(course); db.session.commit(); audit('DELETE_COURSE', code)
-    flash(f'Course {code} deleted successfully.', 'success'); return redirect(url_for('admin.courses'))
+    db.session.delete(course); db.session.commit(); audit('DELETE_COURSE', name)
+    flash(f'Course {name} deleted successfully.', 'success'); return redirect(url_for('admin.courses'))
 
 # ============================================================
 # CERTIFICATE IMAGE MANAGEMENT

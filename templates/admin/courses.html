@@ -7,7 +7,7 @@
   <div class="course-admin-grid">
   {% for c in courses if c.category == 'management' %}
     <div class="panel course-admin">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="course-code">{{ c.course_code }}</span><span class="badge {{ c.status }}">{{ c.status }}</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="badge {{ c.status }}">{{ c.status }}</span></div>
       <h2>{{ c.course_name }}</h2>
       <div class="course-description">{{ c.description or 'No description added.' }}</div>
       <div style="margin:12px 0"><small style="color:var(--muted);display:block">Duration &amp; Eligibility</small><strong>{{ c.duration or '—' }}</strong>{% if c.eligibility %}<div style="font-size:12px;color:var(--muted);margin-top:4px">{{ c.eligibility }}</div>{% endif %}<div style="font-size:13px;margin-top:8px"><strong>Fees:</strong> {% if c.fees is not none %}₹{{ '%.2f'|format(c.fees|float) }} / Year{% else %}Fees on request{% endif %}</div></div>
@@ -28,7 +28,7 @@
     <div class="course-admin-grid">
     {% for c in courses if c.category == 'engineering' and c.engineering_section == section_key %}
       <div class="panel course-admin">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="course-code">{{ c.course_code }}</span><span class="badge {{ c.status }}">{{ c.status }}</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span class="badge {{ c.status }}">{{ c.status }}</span></div>
         <h2>{{ c.course_name }}</h2>
         <div class="course-description">{{ c.description or 'No description added.' }}</div>
         <div style="margin:12px 0"><small style="color:var(--muted);display:block">Duration &amp; Eligibility</small><strong>{{ c.duration or '—' }}</strong>{% if c.eligibility %}<div style="font-size:12px;color:var(--muted);margin-top:4px">{{ c.eligibility }}</div>{% endif %}<div style="font-size:13px;margin-top:8px"><strong>Fees:</strong> {% if c.fees is not none %}₹{{ '%.2f'|format(c.fees|float) }} / Year{% else %}Fees on request{% endif %}</div></div>

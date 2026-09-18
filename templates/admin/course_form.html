@@ -5,7 +5,7 @@
     <div>
         <span class="top-label">ACADEMICS</span>
         <h1>{% if course %}Edit Course{% else %}Add Course{% endif %}</h1>
-        <p>{% if course %}Update program details for {{ course.course_name }} ({{ course.course_code }}).{% else %}Create a program for the public catalogue and assign its academic section.{% endif %}</p>
+        <p>{% if course %}Update program details for {{ course.course_name }}.{% else %}Create a program for the public catalogue and assign its academic section.{% endif %}</p>
     </div>
     <a class="btn secondary" href="{{ url_for('admin.courses') }}">← Back to Courses</a>
 </div>
@@ -14,11 +14,7 @@
     <form method="post" class="admin-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-grid">
-            <div>
-                <label>Course Code *</label>
-                <input name="course_code" required value="{{ course.course_code if course else '' }}" placeholder="e.g. CS101">
-            </div>
-            <div>
+<div>
                 <label>Course Name *</label>
                 <input name="course_name" required value="{{ course.course_name if course else '' }}" placeholder="e.g. Diploma in Computer Science">
             </div>
@@ -41,8 +37,9 @@
                     <option value="electronics" {% if (course and course.engineering_section == 'electronics') or (not course and preset_engineering_section == 'electronics') %}selected{% endif %}>Electronics Engineering</option>
                     <option value="automobile" {% if (course and course.engineering_section == 'automobile') or (not course and preset_engineering_section == 'automobile') %}selected{% endif %}>Automobile Engineering</option>
                     <option value="computer" {% if (course and course.engineering_section == 'computer') or (not course and preset_engineering_section == 'computer') %}selected{% endif %}>Computer Engineering</option>
+                    <option value="other" {% if (course and course.engineering_section == 'other') or (not course and preset_engineering_section == 'other') %}selected{% endif %}>Other Engineering</option>
                 </select>
-                <small class="field-help">Choose 1 of the 7 disciplines when adding an Engineering course.</small>
+                <small class="field-help">Choose one Engineering field when adding an Engineering course.</small>
             </div>
             <div>
                 <label>Duration</label>

@@ -51,6 +51,15 @@ def sync_database_schema(app):
                             IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='course' AND column_name='engineering_section') THEN
                                 ALTER TABLE course ADD COLUMN engineering_section VARCHAR(40);
                             END IF;
+                            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='student' AND column_name='subject_code') THEN
+                                ALTER TABLE student DROP COLUMN subject_code;
+                            END IF;
+                            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='course' AND column_name='subject_code') THEN
+                                ALTER TABLE course DROP COLUMN subject_code;
+                            END IF;
+                            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='certificate' AND column_name='subject_code') THEN
+                                ALTER TABLE certificate DROP COLUMN subject_code;
+                            END IF;
                         END $$;
                     """))
                     conn.execute(db.text("UPDATE course SET category='management' WHERE category IS NULL OR category=''"))
@@ -75,6 +84,10 @@ def sync_database_schema(app):
                         conn.execute(db.text("ALTER TABLE course ADD COLUMN fees NUMERIC(10,2)"))
                     if 'engineering_section' not in course_cols:
                         conn.execute(db.text("ALTER TABLE course ADD COLUMN engineering_section VARCHAR(40)"))
+                    for table in ('student', 'course', 'certificate'):
+                        cols = {row[1] for row in conn.execute(db.text(f"PRAGMA table_info({table})")).fetchall()}
+                        if 'subject_code' in cols:
+                            conn.execute(db.text(f"ALTER TABLE {table} DROP COLUMN subject_code"))
                     conn.execute(db.text("UPDATE course SET category='management' WHERE category IS NULL OR category=''"))
                     conn.commit()
         except Exception as e:
