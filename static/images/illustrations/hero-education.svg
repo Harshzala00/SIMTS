@@ -1,0 +1,47 @@
+<svg viewBox="0 0 420 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Education and growth illustration">
+  <defs>
+    <linearGradient id="heroCircle" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1b568f"/>
+      <stop offset="100%" stop-color="#0d2e55"/>
+    </linearGradient>
+  </defs>
+
+  <circle cx="210" cy="190" r="175" fill="url(#heroCircle)"/>
+  <circle cx="210" cy="190" r="175" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="1"/>
+  <circle cx="210" cy="190" r="140" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="1"/>
+
+  <!-- open book -->
+  <g transform="translate(90,190)">
+    <path d="M0 20 C 35 2, 75 2, 110 20 L110 95 C 75 78, 35 78, 0 95 Z" fill="#ffffff"/>
+    <path d="M110 20 C 145 2, 185 2, 220 20 L220 95 C 185 78, 145 78, 110 95 Z" fill="#f4f4f4"/>
+    <path d="M110 20 L110 95" stroke="#d9a62e" stroke-width="3"/>
+    <path d="M14 34 L96 20" stroke="#c7d2e0" stroke-width="4" stroke-linecap="round"/>
+    <path d="M14 50 L96 38" stroke="#c7d2e0" stroke-width="4" stroke-linecap="round"/>
+    <path d="M14 66 L88 56" stroke="#c7d2e0" stroke-width="4" stroke-linecap="round"/>
+    <path d="M124 20 L206 34" stroke="#d7dde5" stroke-width="4" stroke-linecap="round"/>
+    <path d="M124 38 L206 50" stroke="#d7dde5" stroke-width="4" stroke-linecap="round"/>
+    <path d="M132 56 L206 66" stroke="#d7dde5" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <!-- graduation cap -->
+  <g transform="translate(148,70)">
+    <polygon points="62,0 124,26 62,52 0,26" fill="#d9a62e"/>
+    <polygon points="62,10 104,26 62,42 20,26" fill="#f6e9c5"/>
+    <rect x="40" y="26" width="44" height="34" rx="4" fill="#0d2e55"/>
+    <line x1="118" y1="28" x2="118" y2="62" stroke="#f6e9c5" stroke-width="3"/>
+    <circle cx="118" cy="66" r="5" fill="#f6e9c5"/>
+  </g>
+
+  <!-- growth bars -->
+  <g transform="translate(250,205)">
+    <rect x="0" y="46" width="20" height="34" rx="3" fill="#f6e9c5"/>
+    <rect x="28" y="28" width="20" height="52" rx="3" fill="#f6e9c5"/>
+    <rect x="56" y="6" width="20" height="74" rx="3" fill="#d9a62e"/>
+    <path d="M0 40 L28 22 L56 0" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <polygon points="56,0 68,4 58,14" fill="#ffffff"/>
+  </g>
+
+  <circle cx="70" cy="90" r="6" fill="#d9a62e" opacity=".8"/>
+  <circle cx="345" cy="120" r="5" fill="#f6e9c5" opacity=".7"/>
+  <circle cx="330" cy="300" r="7" fill="#d9a62e" opacity=".6"/>
+</svg>

@@ -4,6 +4,7 @@ import shutil
 import sqlite3
 import subprocess
 from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 
 from sqlalchemy import select
@@ -69,6 +70,9 @@ def export_python_sql_dump(work_dir, app):
                 for k, v in row.items():
                     if isinstance(v, (datetime, date)):
                         row_dict[k] = v.isoformat()
+                    elif isinstance(v, Decimal):
+                        # Decimal isn't JSON serializable - store as a plain float.
+                        row_dict[k] = float(v)
                     else:
                         row_dict[k] = v
                 export_data[table_name].append(row_dict)
@@ -81,7 +85,7 @@ def export_python_sql_dump(work_dir, app):
                         vals.append("NULL")
                     elif isinstance(val, bool):
                         vals.append("TRUE" if val else "FALSE")
-                    elif isinstance(val, (int, float)):
+                    elif isinstance(val, (int, float, Decimal)):
                         vals.append(str(val))
                     elif isinstance(val, (datetime, date)):
                         vals.append(f"'{val.isoformat()}'")
@@ -92,7 +96,9 @@ def export_python_sql_dump(work_dir, app):
                 sql_lines.append(f"INSERT INTO {table_name} ({cols}) VALUES ({val_str});")
 
     sql_path.write_text("\n".join(sql_lines), encoding="utf-8")
-    json_path.write_text(json.dumps(export_data, indent=2), encoding="utf-8")
+    # default=str is a safety net for any other non-JSON-native type (e.g. Decimal
+    # slipping through from a future column) so a backup never hard-fails on export.
+    json_path.write_text(json.dumps(export_data, indent=2, default=str), encoding="utf-8")
 
 
 def create_backup(app):

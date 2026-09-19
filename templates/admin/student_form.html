@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-heading"><div><span class="top-label">STUDENT RECORDS</span><h1>{% if student %}Edit Student{% else %}Add Student{% endif %}</h1><p>Maintain the academic information required for student verification.</p></div><a class="btn secondary" href="{{ url_for('admin.students') }}">← Back to Students</a></div>
 <div class="panel form-panel">
-<form method="post" class="admin-form">
+<form method="post" enctype="multipart/form-data" class="admin-form">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 <div class="form-grid">
 <div><label>Student Code *</label><input name="student_id" required value="{{ student.student_id if student else '' }}" placeholder="SIMTS10001"></div>
@@ -14,6 +14,20 @@
 <div><label>Passing Year <span class="optional">(optional)</span></label><input name="passing_year" inputmode="numeric" maxlength="4" value="{{ student.passing_year if student else '' }}" placeholder="e.g. 2026"></div>
 </div>
 <div class="form-note"><strong>Verification fields</strong><span>Only the information needed for the public admission verification record is collected here.</span></div>
+
+<div class="form-section-title">Certificate <span class="optional">(optional)</span></div>
+<div class="form-grid">
+<div><label>Certificate Number</label><input name="certificate_number" placeholder="CERT-2026-001" value=""></div>
+<div><label>Issue Date</label><input type="date" name="certificate_issue_date"></div>
+<div><label>Certificate Image</label><input type="file" name="certificate_file" accept=".png,.jpg,.jpeg,image/png,image/jpeg"><small class="field-help">PNG or JPG/JPEG only. Add a number and image together to attach a certificate right from this form — no need to look up the student code again on the Certificates page.</small></div>
+</div>
+
+{% if student and student.certificates %}
+<div class="form-note"><strong>Existing certificates for this student</strong><span>
+{% for c in student.certificates %}<a href="{{ url_for('admin.edit_certificate', certificate_id=c.id) }}">{{ c.certificate_number }}</a> ({{ c.status }}){% if not loop.last %}, {% endif %}{% endfor %}
+</span></div>
+{% endif %}
+
 <div class="form-actions"><button type="submit" class="btn primary">{% if student %}Update Student{% else %}Save Student{% endif %}</button><a class="btn secondary" href="{{ url_for('admin.students') }}">Cancel</a></div>
 </form></div>
 {% endblock %}

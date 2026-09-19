@@ -60,6 +60,41 @@ def parse_passing_year(value):
         return None
     return raw
 
+def create_certificate_record(student, number, image, issue_date_value):
+    """Build a Certificate row for `student` from an admin-supplied image + number,
+    so a certificate can be attached straight from the student add/edit form
+    instead of the separate Certificates page. Does not commit or roll back —
+    the caller owns the transaction so this can be combined with saving the student."""
+    ext = image_extension(image.filename if image else '')
+    if ext not in {'.png', '.jpg'} or not image_signature(image):
+        return None, 'Certificate image must be a valid PNG or JPG file.'
+    if Certificate.query.filter_by(certificate_number=number).first():
+        return None, 'Certificate number already exists.'
+
+    filename = secure_filename(f'cert_{number}') + ext
+    try:
+        if blob_enabled():
+            file_reference = upload_image(image, 'certificates', filename)
+        else:
+            upload_dir = Path(current_app.config['UPLOAD_FOLDER']).resolve()
+            upload_dir.mkdir(parents=True, exist_ok=True)
+            image.save(upload_dir / filename)
+            file_reference = filename
+    except BlobStorageError as exc:
+        return None, str(exc)
+
+    try:
+        issue_date = (datetime.strptime(issue_date_value, '%Y-%m-%d').date()
+                      if issue_date_value else datetime.utcnow().date())
+    except ValueError:
+        issue_date = datetime.utcnow().date()
+
+    cert = Certificate(certificate_number=number, student_id=student.id, issue_date=issue_date,
+                       status='valid', file_name=file_reference)
+    student.certificate_number = number
+    student.certificate_issue_date = issue_date
+    return cert, None
+
 # ============================================================
 # DASHBOARD
 # ============================================================
@@ -152,9 +187,36 @@ def add_student():
         if Student.query.filter_by(student_id=student.student_id).first():
             flash('Student code already exists.', 'error')
             return redirect(url_for('admin.add_student'))
+
+        # Optional: attach a certificate straight from this form instead of the
+        # separate Certificates page. Both fields are optional but must be given together.
+        cert_number = clean(request.form.get('certificate_number'), 100)
+        cert_image = request.files.get('certificate_file')
+        has_cert_image = bool(cert_image and cert_image.filename)
+        if cert_number and not has_cert_image:
+            flash('Please also attach the certificate image, or leave both certificate fields blank.', 'error')
+            return redirect(url_for('admin.add_student'))
+        if has_cert_image and not cert_number:
+            flash('Please provide a certificate number for the attached certificate image.', 'error')
+            return redirect(url_for('admin.add_student'))
+
         db.session.add(student)
+        db.session.flush()  # assign student.id so an optional certificate can reference it
+
+        cert = None
+        if cert_number and has_cert_image:
+            cert, cert_error = create_certificate_record(
+                student, cert_number, cert_image, request.form.get('certificate_issue_date'))
+            if cert_error:
+                db.session.rollback()
+                flash(cert_error, 'error')
+                return redirect(url_for('admin.add_student'))
+            db.session.add(cert)
+
         db.session.commit()
         audit('CREATE_STUDENT', student.student_id)
+        if cert:
+            audit('UPLOAD_CERTIFICATE_IMAGE', cert.certificate_number)
         flash('Student added successfully.', 'success')
         return redirect(url_for('admin.students'))
     return render_template('admin/student_form.html', student=None, courses=courses)
@@ -177,8 +239,33 @@ def edit_student(student_id):
         if existing and existing.id != student.id:
             flash('Student code already in use by another student.', 'error')
             return redirect(url_for('admin.edit_student', student_id=student.id))
+
+        # Optional: attach a new certificate straight from this form. Editing or
+        # replacing an existing certificate's image still happens on the Certificates page.
+        cert_number = clean(request.form.get('certificate_number'), 100)
+        cert_image = request.files.get('certificate_file')
+        has_cert_image = bool(cert_image and cert_image.filename)
+        if cert_number and not has_cert_image:
+            flash('Please also attach the certificate image, or leave both certificate fields blank.', 'error')
+            return redirect(url_for('admin.edit_student', student_id=student.id))
+        if has_cert_image and not cert_number:
+            flash('Please provide a certificate number for the attached certificate image.', 'error')
+            return redirect(url_for('admin.edit_student', student_id=student.id))
+
+        cert = None
+        if cert_number and has_cert_image:
+            cert, cert_error = create_certificate_record(
+                student, cert_number, cert_image, request.form.get('certificate_issue_date'))
+            if cert_error:
+                db.session.rollback()
+                flash(cert_error, 'error')
+                return redirect(url_for('admin.edit_student', student_id=student.id))
+            db.session.add(cert)
+
         db.session.commit()
         audit('EDIT_STUDENT', f'{student.student_id} - {student.full_name}')
+        if cert:
+            audit('UPLOAD_CERTIFICATE_IMAGE', cert.certificate_number)
         flash('Student record updated successfully.', 'success')
         return redirect(url_for('admin.students'))
     return render_template('admin/student_form.html', student=student, courses=courses)

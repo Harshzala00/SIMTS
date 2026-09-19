@@ -1,0 +1,47 @@
+<svg viewBox="0 0 520 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Students collaborating illustration">
+  <rect x="0" y="0" width="520" height="360" rx="14" fill="#eef4fb"/>
+  <ellipse cx="260" cy="330" rx="210" ry="18" fill="#dbe6f2"/>
+
+  <!-- table -->
+  <rect x="90" y="230" width="340" height="16" rx="6" fill="#123b6d"/>
+  <rect x="110" y="246" width="14" height="60" fill="#123b6d"/>
+  <rect x="396" y="246" width="14" height="60" fill="#123b6d"/>
+
+  <!-- laptop on table -->
+  <g transform="translate(230,190)">
+    <rect x="0" y="26" width="60" height="8" rx="2" fill="#0d2e55"/>
+    <rect x="6" y="0" width="48" height="30" rx="3" fill="#ffffff" stroke="#123b6d" stroke-width="3"/>
+    <rect x="12" y="6" width="36" height="18" fill="#d9a62e" opacity=".55"/>
+  </g>
+
+  <!-- book stack -->
+  <g transform="translate(150,206)">
+    <rect x="0" y="14" width="46" height="10" rx="2" fill="#d9a62e"/>
+    <rect x="4" y="4" width="38" height="10" rx="2" fill="#1b568f"/>
+  </g>
+
+  <!-- student figure 1 -->
+  <g transform="translate(120,110)">
+    <circle cx="30" cy="26" r="22" fill="#f2c98b"/>
+    <path d="M8 26 a22 22 0 0 1 44 0" fill="#0d2e55"/>
+    <path d="M6 100 C 6 62, 12 48, 30 48 C 48 48, 54 62, 54 100 Z" fill="#1b568f"/>
+  </g>
+
+  <!-- student figure 2 (center, facing laptop) -->
+  <g transform="translate(228,96)">
+    <circle cx="32" cy="26" r="23" fill="#e7b483"/>
+    <path d="M9 24 a23 23 0 0 1 46 0" fill="#17263b"/>
+    <path d="M6 104 C 6 64, 13 50, 32 50 C 51 50, 58 64, 58 104 Z" fill="#123b6d"/>
+  </g>
+
+  <!-- student figure 3 -->
+  <g transform="translate(340,112)">
+    <circle cx="28" cy="24" r="21" fill="#f4d3a8"/>
+    <path d="M7 24 a21 21 0 0 1 42 0" fill="#3a2a1a"/>
+    <path d="M5 98 C 5 61, 11 47, 28 47 C 45 47, 51 61, 51 98 Z" fill="#d9a62e"/>
+  </g>
+
+  <circle cx="80" cy="70" r="6" fill="#d9a62e" opacity=".6"/>
+  <circle cx="450" cy="90" r="8" fill="#1b568f" opacity=".25"/>
+  <circle cx="60" cy="180" r="5" fill="#123b6d" opacity=".2"/>
+</svg>

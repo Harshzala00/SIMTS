@@ -108,7 +108,7 @@ def admission_verification():
         if student:
             certificate = (Certificate.query.filter_by(student_id=student.id, status="valid")
                            .order_by(Certificate.id.desc()).first())
-        return no_store(render_template("admission_verification_result.html", student=student, certificate=certificate, searched=True))
+        return no_store(render_template("admission_verification.html", student=student, certificate=certificate, searched=True))
     return no_store(render_template("admission_verification.html", student=None, certificate=None, searched=False))
 
 
