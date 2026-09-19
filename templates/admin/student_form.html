@@ -8,7 +8,7 @@
 <div class="form-grid">
 <div><label>Student Code *</label><input name="student_id" required value="{{ student.student_id if student else '' }}" placeholder="SIMTS10001"></div>
 <div><label>Full Name *</label><input name="full_name" required value="{{ student.full_name if student else '' }}" placeholder="Student full name"></div>
-<div><label>Email *</label><input type="email" name="email" required value="{{ student.email if student else '' }}" placeholder="student@example.com"></div>
+<div><label>Email <span class="optional">(optional)</span></label><input type="email" name="email" value="{{ student.email if student else '' }}" placeholder="student@example.com"></div>
 <div><label>Course</label><select name="course_id"><option value="">Select course</option>{% for c in courses %}<option value="{{ c.id }}" {% if student and student.course_id == c.id %}selected{% endif %}>{{ c.course_name }} — {{ c.category|title }}</option>{% endfor %}</select></div>
 <div><label>Passing Grade <span class="optional">(optional)</span></label><input name="passing_grade" value="{{ student.passing_grade if student else '' }}" placeholder="e.g. A / First Class / 75%"></div>
 <div><label>Passing Year <span class="optional">(optional)</span></label><input name="passing_year" inputmode="numeric" maxlength="4" value="{{ student.passing_year if student else '' }}" placeholder="e.g. 2026"></div>

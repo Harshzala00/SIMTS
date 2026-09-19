@@ -1,7 +1,6 @@
 import os
 from datetime import datetime
 from pathlib import Path
-import re
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
@@ -13,6 +12,7 @@ from extensions import db
 from models import Admin, AuditLog, Certificate, ContactMessage, Course, Student
 from security import admin_required, audit
 from services.backup import create_backup
+from services.student_import import build_import_plan
 from services.blob_storage import blob_enabled, delete_file, upload_image, BlobStorageError
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -100,8 +100,8 @@ def apply_student_form(student):
     sid = clean(request.form.get('student_id'), 80)
     name = clean(request.form.get('full_name'), 200)
     email = clean(request.form.get('email'), 200)
-    if not sid or not name or not email:
-        return None, 'Student code, name and email are required.'
+    if not sid or not name:
+        return None, 'Student code and name are required.'
 
     student.student_id = sid
     student.full_name = name
@@ -232,136 +232,47 @@ def import_students():
         except Exception:
             flash('The uploaded spreadsheet could not be read.', 'error')
             return redirect(url_for('admin.import_students'))
-        if not rows:
-            flash('Spreadsheet is empty.', 'error')
+
+        # All import rules live in services/student_import.py. The database is read
+        # once up front (not once per row) so large files import quickly.
+        existing_ids = {sid for (sid,) in db.session.query(Student.student_id).all()}
+        existing_courses = [(c.id, c.course_name) for c in Course.query.all()]
+        plan = build_import_plan(rows, existing_ids, existing_courses)
+        if plan.error:
+            flash(plan.error, 'error')
             return redirect(url_for('admin.import_students'))
 
-        def normalize(h):
-            return re.sub(r'[^a-z0-9]+', '_', clean(h, 80).lower()).strip('_')
-
-        headers = [normalize(x).replace('_if', '') for x in rows[0]]
-        aliases = {
-            'student_id': 'student_code',
-            'full_name': 'name',
-            'course_name': 'course',
-            'passing_grade': 'passing_grade',
-            'passing_year': 'passing_year',
-        }
-        headers = [aliases.get(h, h) for h in headers]
-        required = {'student_code', 'name', 'email', 'course'}
-        if not required.issubset(headers):
-            flash('Required columns: Student code, Name, Email, Course. Optional: Passing grade, Passing year.', 'error')
-            return redirect(url_for('admin.import_students'))
-
-        # Normalize legacy spreadsheet course names to the institute catalogue convention.
-        def normalize_course_name(value):
-            raw = re.sub(r'\s+', ' ', clean(value, 200)).strip()
-            upper = raw.upper()
-            m = re.match(r'^\s*([A-Z0-9]+)\s*\(\s*(.*?)\s*\)\s*$', upper)
-            code = m.group(1) if m else ''
-            title = m.group(2) if m else upper
-            title = re.sub(r'\bPOST\s+GRADUATE\b', 'POSTGRADUATE', title)
-            title = re.sub(r'\bGRADUTE\b', 'GRADUATE', title)
-            title = re.sub(r'\bGRADUATE\b', 'POSTGRADUATE', title)
-            title = re.sub(r'\bMEHCHANICAL\b', 'MECHANICAL', title)
-            title = re.sub(r'\bMEHCANICAL\b', 'MECHANICAL', title)
-            title = re.sub(r'\bARTITECTURE\b', 'ARCHITECTURE', title)
-            title = re.sub(r'\bDIPOMA\b', 'DIPLOMA', title)
-            title = re.sub(r'\bGRADUTE\b', 'GRADUATE', title)
-            title = re.sub(r'\s+', ' ', title).strip()
-            # Specific legacy abbreviations / website-aligned names.
-            known = {
-                'GBA': 'POSTGRADUATE IN BUSINESS ADMINISTRATION',
-                'GDBA': 'POSTGRADUATE DIPLOMA IN BUSINESS ADMINISTRATION',
-                'PDBA': 'PROFESSIONAL DIPLOMA IN BUSINESS ADMINISTRATION',
-                'MBA': 'MASTER IN BUSINESS ADMINISTRATION',
-                'MPBA': 'MASTER PROGRAMME IN BUSINESS ADMINISTRATION',
-                'EMBA': 'EXECUTIVE MASTER IN BUSINESS ADMINISTRATION',
-                'PDM': 'PROFESSIONAL DOCTRATE IN MANAGEMENT',
-                'DBA': 'DIPLOMA IN BUSINESS ADMINISTRATION',
-                'DCA': 'DIPLOMA IN COMPUTER APPLICATION',
-                'GCA': 'POSTGRADUATE IN COMPUTER APPLICATION',
-                'PGDCA': 'POSTGRADUATE DIPLOMA IN COMPUTER APPLICATION',
-                'MCA': 'MASTER IN COMPUTER APPLICATION',
-                'GHM': 'POSTGRADUATE IN HOTEL MANAGEMENT',
-                'DME': 'DIPLOMA IN MECHANICAL ENGINEERING',
-                'GDME': 'POSTGRADUATE DIPLOMA IN MECHANICAL ENGINEERING',
-                'GME': 'POSTGRADUATE IN MECHANICAL ENGINEERING',
-                'DCE': 'DIPLOMA IN CIVIL ENGINEERING',
-                'DAE': 'DIPLOMA IN ARCHITECTURE ENGINEERING',
-                'DEE': 'DIPLOMA IN ELECTRICAL ENGINEERING',
-                'GEE': 'POSTGRADUATE IN ELECTRICAL ENGINEERING',
-                'GAM': 'POSTGRADUATE IN AUTOMOBILE ENGINEERING',
-                'CDCN': 'CERTIFIED DIPLOMA IN COMPUTER NETWORKING',
-                'DECE': 'DIPLOMA IN ELECTRONICS & COMMUNICATION ENGINEERING',
-                'GDECE': 'POSTGRADUATE DIPLOMA IN ELECTRONICS & COMMUNICATION ENGINEERING',
-                'GECE': 'POSTGRADUATE IN ELECTRONICS & COMMUNICATION ENGINEERING',
-            }
-            if code in known:
-                title = known[code]
-            # If no known code, use the cleaned text. Keep an input abbreviation if present.
-            if code:
-                return f'{title} ({code})'
-            return title
-
-        def course_category(course_name):
-            u = course_name.upper()
-            engineering_words = ('ENGINEERING', 'MECHANICAL', 'CIVIL', 'ELECTRICAL', 'ELECTRONICS', 'AUTOMOBILE', 'CHEMICAL', 'ARCHITECTURE', 'COMPUTER NETWORKING')
-            return 'engineering' if any(w in u for w in engineering_words) else 'management'
-
-        def engineering_section_for(course_name):
-            u = course_name.upper()
-            if 'MECHANICAL' in u: return 'mechanical'
-            if 'CHEMICAL' in u: return 'chemical'
-            if 'CIVIL' in u: return 'civil'
-            if 'ELECTRICAL' in u and 'ELECTRONICS' not in u: return 'electrical'
-            if 'ELECTRONICS' in u or 'ELECTRONICS &' in u: return 'electronics'
-            if 'AUTOMOBILE' in u: return 'automobile'
-            if 'COMPUTER' in u: return 'computer'
-            return 'other'
-
-
-        count = skipped = created_courses = 0
-        for row in rows[1:]:
-            data = dict(zip(headers, row))
-            sid = clean(data.get('student_code'), 80)
-            name = clean(data.get('name'), 200)
-            email = clean(data.get('email'), 200)
-            course_value = clean(data.get('course'), 200)
-            grade = clean(data.get('passing_grade'), 50)
-            year = parse_passing_year(data.get('passing_year'))
-            # Email and year remain required for the existing SIMTS import contract.
-            if not sid or not name or not email or not course_value or year is None:
-                skipped += 1
-                continue
-            if Student.query.filter_by(student_id=sid).first():
-                skipped += 1
-                continue
-
-            normalized_course = normalize_course_name(course_value)
-            # Match courses by their full normalized name only.
-            course = Course.query.filter(func.lower(Course.course_name) == normalized_course.lower()).first()
-            if not course:
-                category = course_category(normalized_course)
-                section = engineering_section_for(normalized_course) if category == 'engineering' else None
-                course = Course(course_name=normalized_course,
-                                category=category, engineering_section=section, status='active')
+        # Save everything in one transaction: either the whole file is imported or nothing is.
+        try:
+            new_courses = {}
+            for spec in plan.new_courses:
+                course = Course(course_name=spec['name'], category=spec['category'],
+                                engineering_section=spec['section'], status='active')
                 db.session.add(course)
-                db.session.flush()
-                created_courses += 1
+                new_courses[spec['key']] = course
+            db.session.flush()
 
-            db.session.add(Student(
-                student_id=sid, full_name=name, email=email,
-                course_id=course.id, passing_grade=grade, passing_year=year,
-                admission_status='active', completion_status='ongoing'
-            ))
-            count += 1
+            for s in plan.students:
+                course_id = s['course_id']
+                if course_id is None and s['new_course_key']:
+                    course_id = new_courses[s['new_course_key']].id
+                db.session.add(Student(
+                    student_id=s['student_id'], full_name=s['full_name'], email=s['email'],
+                    course_id=course_id, passing_grade=s['passing_grade'], passing_year=s['passing_year'],
+                    admission_status='active', completion_status='ongoing'
+                ))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception('Student import failed')
+            flash('The import failed and nothing was saved. Please check the file and try again.', 'error')
+            return redirect(url_for('admin.import_students'))
 
-        db.session.commit()
-        audit('IMPORT_STUDENTS', f'{count} imported / {skipped} skipped / {created_courses} courses created')
-        flash(f'Imported {count} students; skipped {skipped}; created {created_courses} missing courses.', 'success')
-        return redirect(url_for('admin.students'))
-    return render_template('admin/import_students.html')
+        audit('IMPORT_STUDENTS',
+              f'{len(plan.students)} imported / {len(plan.skipped)} skipped / '
+              f'{len(plan.merged)} repeated rows merged / {len(plan.new_courses)} courses created')
+        return render_template('admin/import_students.html', report=plan)
+    return render_template('admin/import_students.html', report=None)
 
 # Engineering sections used by the public catalogue and admin course form.
 ENGINEERING_SECTIONS = [

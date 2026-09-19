@@ -2,15 +2,56 @@
 {% block title %}Import Students — SIMTS Admin{% endblock %}
 {% block content %}
 <div class="page-heading"><div><span class="top-label">BULK DATA</span><h1>Import Students</h1><p>Upload an Excel spreadsheet for bulk student admission records.</p></div></div>
+
+{% if report %}
+<div class="panel form-panel" style="margin-bottom:20px">
+  {% if report.students %}<div class="flash success">Import complete: {{ report.students|length }} student{{ '' if report.students|length == 1 else 's' }} added.</div>
+  {% else %}<div class="flash error">No new students were added.</div>{% endif %}
+  <div class="import-guide">
+    {% if report.matched_courses %}&bull; {{ report.matched_courses.values()|sum(attribute='students') }} student(s) linked to {{ report.matched_courses|length }} existing course(s).<br>{% endif %}
+    {% if report.new_courses %}&bull; {{ report.new_courses|length }} new course(s) created (listed below). Review them under <a href="{{ url_for('admin.courses') }}">Courses</a>.<br>{% endif %}
+    {% if report.merged %}&bull; {{ report.merged|length }} repeated row(s) merged: the same Student code appeared more than once in the file, so one student was created.<br>{% endif %}
+    {% if report.students %}&bull; {{ report.without_email }} student(s) have no email and {{ report.without_year }} have no passing year (both are optional).{% endif %}
+  </div>
+
+  {% if report.new_courses %}
+  <h3 style="margin:0 0 8px;font-size:14px">New courses created</h3>
+  <div class="table-scroll" style="margin-bottom:18px"><table>
+    <thead><tr><th>Course</th><th>Category</th><th>Students</th></tr></thead>
+    <tbody>{% for c in report.new_courses %}<tr><td>{{ c.name }}</td><td>{{ c.category|title }}</td><td>{{ c.students }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% endif %}
+
+  {% if report.skipped %}
+  <div class="flash error">{{ report.skipped|length }} row(s) skipped:</div>
+  <div class="table-scroll" style="margin-bottom:18px"><table>
+    <thead><tr><th>Excel row</th><th>Student code</th><th>Reason</th></tr></thead>
+    <tbody>{% for row, code, reason in report.skipped %}<tr><td>{{ row }}</td><td><code>{{ code or '—' }}</code></td><td>{{ reason }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% endif %}
+
+  {% if report.notes %}
+  <h3 style="margin:0 0 8px;font-size:14px">Please check</h3>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Excel row</th><th>Student code</th><th>Note</th></tr></thead>
+    <tbody>{% for row, code, note in report.notes %}<tr><td>{{ row }}</td><td><code>{{ code }}</code></td><td>{{ note }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% endif %}
+
+  <p style="margin:18px 0 0"><a class="btn primary" href="{{ url_for('admin.students') }}">View students</a></p>
+</div>
+{% endif %}
+
 <div class="panel form-panel">
   <div class="import-guide">
     <b>Excel columns:</b><br>
     1. Student code <strong>(required)</strong><br>
     2. Name <strong>(required)</strong><br>
-    3. Email <strong>(required)</strong><br>
-    4. Course <strong>(required — use the exact full course name)</strong><br>
-    5. Passing grade <strong>(optional)</strong><br>
-    6. Passing year <strong>(optional)</strong>
+    3. Course <strong>(required — the course is matched to an existing course by name; a new course is created if none matches)</strong><br>
+    4. Email <strong>(optional)</strong><br>
+    5. Passing grade or Grade <strong>(optional)</strong><br>
+    6. Passing year <strong>(optional)</strong><br>
+    <small>Rows are skipped only when the Student code or Name is missing, or the Student code already exists.</small>
   </div>
   <form method="post" enctype="multipart/form-data" class="admin-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

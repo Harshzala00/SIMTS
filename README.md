@@ -6,7 +6,7 @@ Flask + PostgreSQL application for the institute website, student admission veri
 - Public Home, About Us, Courses, Admission Verification and Contact pages
 - Management and Engineering course categories
 - Admin student management and bulk `.xlsx` import
-- Bulk import columns: Student code, Name, Email, Course, Passing grade (optional), Passing year (optional)
+- Bulk import columns: Student code, Name and Course are required; Email, Passing grade (or Grade) and Passing year are optional. Rows are skipped only when the Student code or Name is missing or the Student code already exists; repeated codes in the file are merged; courses are matched to existing courses by name (ignoring the short form in brackets) and created only when there is no match
 - Protected certificate management using PNG/JPG/JPEG images
 - Admission verification shows Student Name, Student Code, Course Name, Passing Grade and Passing Year
 - A small certificate image is shown beside verified admission details with click-to-zoom/full-size viewing
