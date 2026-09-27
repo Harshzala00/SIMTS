@@ -5,11 +5,22 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="Sai Institute of Management & Technology Studies — career-oriented education in management and engineering.">
 <title>{% block title %}Sai Institute of Management & Technology Studies{% endblock %}</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20260917-3">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20260927-1">
 </head>
 <body>
 <header class="site-header">
   <div class="top-accent"></div>
+  <div class="announcement-bar" role="region" aria-label="Important Notice">
+    <div class="announcement-inner">
+      <div class="announcement-badge">
+        <svg class="announcement-icon" viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+        <span>Important Notice</span>
+      </div>
+      <p class="announcement-text">
+        <strong>www.simts.in</strong> and <strong>www.mysimts.in</strong> are same website. Due to technical issue <strong>www.simts.in</strong> website is not continue from now, so student data available on <strong>mysimts.in</strong> are valid which are available on <strong>simts.in</strong>. Please do consider <strong>simts.in</strong> and <strong>mysimts.in</strong> same.
+      </p>
+    </div>
+  </div>
   <div class="nav-wrap">
     <a class="brand" href="{{ url_for('public.home') }}" aria-label="Sai Institute of Management & Technology Studies home">
       <img src="{{ url_for('static', filename='images/simts-logo.png') }}" alt="SIMTS logo" class="brand-logo">
